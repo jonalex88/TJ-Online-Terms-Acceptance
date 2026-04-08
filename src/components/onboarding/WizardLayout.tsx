@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { CheckCircle } from "lucide-react";
+import tjLogo from "@/assets/tj-logo.png";
 
 interface Step {
   label: string;
@@ -21,8 +22,9 @@ interface WizardLayoutProps {
 const WizardLayout = ({ currentStep, children }: WizardLayoutProps) => {
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md">
-        <h1 className="text-xl font-semibold tracking-tight">Merchant Onboarding</h1>
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md flex items-center gap-4">
+        <img src={tjLogo} alt="Transaction Junction" className="h-8 brightness-0 invert" />
+        <span className="text-xl font-semibold tracking-tight">Merchant Onboarding</span>
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
