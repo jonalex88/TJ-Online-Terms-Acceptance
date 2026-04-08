@@ -46,9 +46,25 @@ export interface Company {
   documents: Document[];
 }
 
+export interface AdminConfig {
+  companyUrl: string;
+  products: {
+    inPersonPayments: boolean;
+    reconPro: boolean;
+  };
+  agreementUploadRequired: boolean;
+  fees: {
+    monthlyFeePerDevice: number;
+    monthlyCloudHostingFeePerDevice: number;
+    monthlyReconProFeePerSite: number;
+    oneOffSetupFeePerSite: number;
+  };
+}
+
 export interface OnboardingData {
   sessionId: string;
   hubspotCompanyId: string;
+  adminConfig: AdminConfig;
   companies: Company[];
   termsAccepted: boolean;
   feesAccepted: boolean;
