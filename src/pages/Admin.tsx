@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSession } from "@/lib/onboarding-store";
-import { Copy, CheckCircle, Link as LinkIcon } from "lucide-react";
+import { Copy, CheckCircle, Link as LinkIcon, ExternalLink } from "lucide-react";
 
 const Admin = () => {
   const [hubspotId, setHubspotId] = useState("");
