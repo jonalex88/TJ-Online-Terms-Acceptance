@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { createSession, DEFAULT_ADMIN_CONFIG } from "@/lib/onboarding-store";
 import { AdminConfig } from "@/types/onboarding";
 import { Copy, CheckCircle, Link as LinkIcon, ExternalLink } from "lucide-react";
-
+import tjLogo from "@/assets/tj-logo.png";
 const Admin = () => {
   const [config, setConfig] = useState<AdminConfig>({ ...DEFAULT_ADMIN_CONFIG });
   const [generatedLink, setGeneratedLink] = useState("");
@@ -38,7 +38,10 @@ const Admin = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-semibold">Merchant Onboarding</CardTitle>
+          <div className="flex justify-center mb-4">
+            <img src={tjLogo} alt="Transaction Junction" className="h-10" />
+          </div>
+          <CardTitle className="text-2xl font-semibold">Send merchant onboarding link</CardTitle>
           <CardDescription>
             Configure and generate a unique onboarding link for a merchant.
           </CardDescription>
@@ -105,7 +108,7 @@ const Admin = () => {
             <Label className="font-medium">Fees</Label>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label htmlFor="fee-device" className="text-xs text-muted-foreground">Monthly fee per integrated device</Label>
+                <Label htmlFor="fee-device" className="text-xs text-muted-foreground">Lane fee</Label>
                 <Input
                   id="fee-device"
                   type="number"
@@ -115,7 +118,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="fee-cloud" className="text-xs text-muted-foreground">Monthly cloud hosting fee per integrated device</Label>
+                <Label htmlFor="fee-cloud" className="text-xs text-muted-foreground">Cloud fee</Label>
                 <Input
                   id="fee-cloud"
                   type="number"
@@ -125,7 +128,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="fee-recon" className="text-xs text-muted-foreground">Monthly Recon Pro fee per site</Label>
+                <Label htmlFor="fee-recon" className="text-xs text-muted-foreground">Recon Pro fee</Label>
                 <Input
                   id="fee-recon"
                   type="number"
@@ -135,7 +138,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="fee-setup" className="text-xs text-muted-foreground">Once off setup fee per site</Label>
+                <Label htmlFor="fee-setup" className="text-xs text-muted-foreground">Config fee</Label>
                 <Input
                   id="fee-setup"
                   type="number"
