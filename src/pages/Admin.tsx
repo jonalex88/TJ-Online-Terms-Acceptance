@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { createSession, DEFAULT_ADMIN_CONFIG } from "@/lib/onboarding-store";
 import { AdminConfig } from "@/types/onboarding";
 import { Copy, CheckCircle, Link as LinkIcon, ExternalLink } from "lucide-react";
-
+import tjLogo from "@/assets/tj-logo.png";
 const Admin = () => {
   const [config, setConfig] = useState<AdminConfig>({ ...DEFAULT_ADMIN_CONFIG });
   const [generatedLink, setGeneratedLink] = useState("");
