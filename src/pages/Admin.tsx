@@ -38,7 +38,10 @@ const Admin = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-lg shadow-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-semibold">Merchant Onboarding</CardTitle>
+          <div className="flex justify-center mb-4">
+            <img src={tjLogo} alt="Transaction Junction" className="h-10" />
+          </div>
+          <CardTitle className="text-2xl font-semibold">Send merchant onboarding link</CardTitle>
           <CardDescription>
             Configure and generate a unique onboarding link for a merchant.
           </CardDescription>
