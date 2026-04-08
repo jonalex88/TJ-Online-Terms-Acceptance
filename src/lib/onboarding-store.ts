@@ -1,4 +1,4 @@
-import { OnboardingData, Company, Contact, Store, Document } from "@/types/onboarding";
+import { OnboardingData, Company, Contact, Store, Document, AdminConfig } from "@/types/onboarding";
 
 const STORAGE_PREFIX = "onboarding_";
 
@@ -6,11 +6,24 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
-export function createSession(hubspotCompanyId: string): string {
+export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
+  companyUrl: "",
+  products: { inPersonPayments: true, reconPro: true },
+  agreementUploadRequired: false,
+  fees: {
+    monthlyFeePerDevice: 280,
+    monthlyCloudHostingFeePerDevice: 25,
+    monthlyReconProFeePerSite: 295,
+    oneOffSetupFeePerSite: 520,
+  },
+};
+
+export function createSession(hubspotCompanyId: string, adminConfig: AdminConfig): string {
   const sessionId = generateId();
   const data: OnboardingData = {
     sessionId,
     hubspotCompanyId,
+    adminConfig,
     companies: [
       {
         id: generateId(),
