@@ -59,6 +59,11 @@ const Admin = () => {
                   {copied ? <CheckCircle className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
+              <Button variant="secondary" className="w-full" asChild>
+                <a href={`/onboarding/${generatedLink.split("/onboarding/")[1]}`}>
+                  <ArrowRight className="mr-2 h-4 w-4" /> Open Onboarding Link
+                </a>
+              </Button>
               {copied && (
                 <p className="text-sm text-success font-medium">Copied to clipboard!</p>
               )}
