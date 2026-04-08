@@ -108,7 +108,7 @@ const Admin = () => {
             <Label className="font-medium">Fees</Label>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label htmlFor="fee-device" className="text-xs text-muted-foreground">Monthly fee per integrated device</Label>
+                <Label htmlFor="fee-device" className="text-xs text-muted-foreground">Lane fee</Label>
                 <Input
                   id="fee-device"
                   type="number"
@@ -118,7 +118,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="fee-cloud" className="text-xs text-muted-foreground">Monthly cloud hosting fee per integrated device</Label>
+                <Label htmlFor="fee-cloud" className="text-xs text-muted-foreground">Cloud fee</Label>
                 <Input
                   id="fee-cloud"
                   type="number"
@@ -128,7 +128,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="fee-recon" className="text-xs text-muted-foreground">Monthly Recon Pro fee per site</Label>
+                <Label htmlFor="fee-recon" className="text-xs text-muted-foreground">Recon Pro fee</Label>
                 <Input
                   id="fee-recon"
                   type="number"
@@ -138,7 +138,7 @@ const Admin = () => {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="fee-setup" className="text-xs text-muted-foreground">Once off setup fee per site</Label>
+                <Label htmlFor="fee-setup" className="text-xs text-muted-foreground">Config fee</Label>
                 <Input
                   id="fee-setup"
                   type="number"
