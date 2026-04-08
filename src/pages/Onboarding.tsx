@@ -112,6 +112,9 @@ const Onboarding = () => {
             <p className="text-sm text-muted-foreground">
               If you have any questions, please contact <span className="font-medium text-foreground">onboarding@transactionjunction.co.za</span>
             </p>
+            <Button variant="outline" className="mt-2" asChild>
+              <a href="/">← Back to Admin</a>
+            </Button>
           </CardContent>
         </Card>
       </div>
