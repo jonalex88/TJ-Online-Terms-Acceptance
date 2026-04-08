@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSession } from "@/lib/onboarding-store";
-import { Copy, CheckCircle, Link as LinkIcon } from "lucide-react";
+import { Copy, CheckCircle, Link as LinkIcon, ExternalLink } from "lucide-react";
 
 const Admin = () => {
   const [hubspotId, setHubspotId] = useState("");
@@ -59,6 +59,11 @@ const Admin = () => {
                   {copied ? <CheckCircle className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
+              <Button variant="secondary" className="w-full" asChild>
+                <a href={`/onboarding/${generatedLink.split("/onboarding/")[1]}`}>
+                  <ExternalLink className="mr-2 h-4 w-4" /> Open Onboarding Link
+                </a>
+              </Button>
               {copied && (
                 <p className="text-sm text-success font-medium">Copied to clipboard!</p>
               )}
