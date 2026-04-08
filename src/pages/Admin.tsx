@@ -61,7 +61,7 @@ const Admin = () => {
               </div>
               <Button variant="secondary" className="w-full" asChild>
                 <a href={`/onboarding/${generatedLink.split("/onboarding/")[1]}`}>
-                  <ArrowRight className="mr-2 h-4 w-4" /> Open Onboarding Link
+                  <ExternalLink className="mr-2 h-4 w-4" /> Open Onboarding Link
                 </a>
               </Button>
               {copied && (
