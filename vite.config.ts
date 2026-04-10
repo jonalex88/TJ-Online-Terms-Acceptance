@@ -141,6 +141,15 @@ interface SubmitBody {
   hubspotDealId: string;
 }
 
+interface AttachPdfBody {
+  pdfBase64: string;
+  fileName: string;
+  signerName: string;
+  signerTitle: string;
+  signerEmail: string;
+  acceptedAt: string;
+}
+
 async function submitOnboardingServer(
   dealId: string,
   body: SubmitBody,
@@ -327,8 +336,9 @@ function hubspotProxyPlugin(mode: string): PluginOption {
         const requestUrl = req.url ? new URL(req.url, "http://localhost") : null;
         const getMatch = requestUrl?.pathname.match(/^\/api\/hubspot\/deals\/(\d+)$/);
         const submitMatch = requestUrl?.pathname.match(/^\/api\/hubspot\/deals\/(\d+)\/submit$/);
+        const attachMatch = requestUrl?.pathname.match(/^\/api\/hubspot\/deals\/(\d+)\/attach-pdf$/);
 
-        if (!getMatch && !submitMatch) {
+        if (!getMatch && !submitMatch && !attachMatch) {
           return next();
         }
 
@@ -370,6 +380,156 @@ function hubspotProxyPlugin(mode: string): PluginOption {
             }
           } catch (error) {
             const message = error instanceof Error ? error.message : "Failed to submit to HubSpot.";
+            writeJson(res, 502, { error: message });
+          }
+          return;
+        }
+
+        // POST /api/hubspot/deals/:dealId/attach-pdf
+        if (attachMatch) {
+          if (req.method !== "POST") {
+            writeJson(res, 405, { error: "Method not allowed" });
+            return;
+          }
+
+          try {
+            const dealId = attachMatch[1];
+            const raw = await readBody(req);
+            const body = JSON.parse(raw) as AttachPdfBody;
+
+            if (!body.pdfBase64 || !body.fileName) {
+              writeJson(res, 400, { error: "Missing required PDF payload." });
+              return;
+            }
+
+            const pdfBuffer = Buffer.from(body.pdfBase64, "base64");
+            const formData = new FormData();
+            formData.append("file", new Blob([pdfBuffer], { type: "application/pdf" }), body.fileName);
+            formData.append(
+              "options",
+              JSON.stringify({
+                access: "PRIVATE",
+                overwrite: false,
+                duplicateValidationStrategy: "NONE",
+                duplicateValidationScope: "ENTIRE_PORTAL",
+              })
+            );
+            formData.append("folderPath", "/signed-agreements");
+
+            const uploadRes = await fetch(`${HUBSPOT_BASE_URL}/files/v3/files`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: formData,
+            });
+
+            if (!uploadRes.ok) {
+              const uploadError = await uploadRes.text();
+              throw new Error(`Failed to upload PDF to HubSpot files: ${uploadError}`);
+            }
+
+            const uploadBody = (await uploadRes.json()) as {
+              id: string;
+              url?: string;
+              defaultHostingUrl?: string;
+            };
+
+            const fileId = uploadBody.id;
+            const fileUrl = uploadBody.url ?? uploadBody.defaultHostingUrl ?? "";
+            const warnings: string[] = [];
+
+            const noteHtml = [
+              `<p><strong>TJ signed agreement attached.</strong></p>`,
+              `<p>Signer: ${body.signerName || "Unknown"}</p>`,
+              `<p>Title: ${body.signerTitle || "Unknown"}</p>`,
+              `<p>Email: ${body.signerEmail || "Unknown"}</p>`,
+              `<p>Accepted at: ${body.acceptedAt || new Date().toISOString()}</p>`,
+            ].join("");
+
+            await hsPost(`/engagements/v1/engagements`, token, {
+              engagement: {
+                active: true,
+                type: "NOTE",
+                timestamp: Date.now(),
+              },
+              associations: {
+                contactIds: [],
+                companyIds: [],
+                dealIds: [Number(dealId)],
+              },
+              attachments: [{ id: Number(fileId) }],
+              metadata: {
+                body: noteHtml,
+              },
+            });
+
+            // Keep history when the HubSpot property supports multi-file values; if not,
+            // fall back to overwriting with the latest uploaded file.
+            let signedAgreementValue = "";
+            try {
+              const dealBefore = await hsGet<HsObject>(
+                `/crm/v3/objects/deals/${dealId}?properties=signed_agreement`,
+                token
+              );
+              const previousValue = prop(dealBefore, "signed_agreement").trim();
+
+              const candidates: string[] = [];
+              if (previousValue) {
+                const existingParts = previousValue
+                  .split(";")
+                  .map((part) => part.trim())
+                  .filter(Boolean);
+                if (!existingParts.includes(fileId)) {
+                  candidates.push([...existingParts, fileId].join(";"));
+                }
+              }
+              candidates.push(fileId);
+              if (fileUrl) {
+                candidates.push(fileUrl);
+              }
+
+              for (const candidate of candidates) {
+                try {
+                  await hsPatch(`/crm/v3/objects/deals/${dealId}`, token, {
+                    properties: {
+                      signed_agreement: candidate,
+                    },
+                  });
+
+                  const dealAfter = await hsGet<HsObject>(
+                    `/crm/v3/objects/deals/${dealId}?properties=signed_agreement`,
+                    token
+                  );
+                  const updatedValue = prop(dealAfter, "signed_agreement").trim();
+                  const containsNewFileId = updatedValue
+                    .split(";")
+                    .map((part) => part.trim())
+                    .includes(fileId);
+
+                  if (updatedValue === candidate || containsNewFileId) {
+                    signedAgreementValue = updatedValue;
+                    break;
+                  }
+                } catch (error) {
+                  warnings.push(
+                    `signed_agreement update attempt failed: ${error instanceof Error ? error.message : String(error)}`
+                  );
+                }
+              }
+
+              if (!signedAgreementValue) {
+                warnings.push(
+                  "Uploaded and attached the file to deal timeline, but could not confirm signed_agreement property update."
+                );
+              }
+            } catch (error) {
+              warnings.push(
+                `Unable to update or verify signed_agreement property: ${error instanceof Error ? error.message : String(error)}`
+              );
+            }
+
+            writeJson(res, 200, { fileId, fileUrl, signedAgreementValue, warnings });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to attach signed agreement.";
             writeJson(res, 502, { error: message });
           }
           return;

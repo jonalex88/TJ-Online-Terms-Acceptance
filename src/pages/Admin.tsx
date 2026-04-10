@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -107,53 +105,6 @@ const SendTab = () => {
       </div>
 
       <div className="space-y-3">
-        <Label className="font-medium">Bulk Deal</Label>
-        <div className="flex items-center gap-3">
-          <Switch
-            checked={config.bulkDeal}
-            onCheckedChange={(checked) =>
-              setConfig((prev) => ({ ...prev, bulkDeal: checked }))
-            }
-          />
-          <span className="text-sm text-muted-foreground">
-            {config.bulkDeal
-              ? "One deal, many sites"
-              : "One deal per site"}
-          </span>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <Label className="font-medium">Products</Label>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <Checkbox id="inperson" checked={config.products.inPersonPayments}
-              onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, products: { ...prev.products, inPersonPayments: !!checked } }))} />
-            <label htmlFor="inperson" className="text-sm cursor-pointer">In-person payments</label>
-          </div>
-          <div className="flex items-center gap-3">
-            <Checkbox id="reconpro" checked={config.products.reconPro}
-              onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, products: { ...prev.products, reconPro: !!checked } }))} />
-            <label htmlFor="reconpro" className="text-sm cursor-pointer">Recon Pro</label>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <Label htmlFor="agreement-type" className="font-medium">Agreement Type</Label>
-        <Select value={config.agreementType} onValueChange={(value) => setConfig((prev) => ({ ...prev, agreementType: value as "accept-terms" | "sign-agreements" | "already-in-place" }))}>
-          <SelectTrigger id="agreement-type">
-            <SelectValue placeholder="Select agreement type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="accept-terms">Accept terms</SelectItem>
-            <SelectItem value="sign-agreements">Sign agreements</SelectItem>
-            <SelectItem value="already-in-place">Already in place</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-3">
         <Label className="font-medium">Fees</Label>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
@@ -185,7 +136,7 @@ const SendTab = () => {
       <Button onClick={handleGenerate} className="w-full" disabled={!dealUrl.trim() || !dealId || loading}>
         {loading
           ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Fetching from HubSpot…</>
-          : <><LinkIcon className="mr-2 h-4 w-4" />Generate Onboarding Link</>
+          : <><LinkIcon className="mr-2 h-4 w-4" />Generate TJ Terms of Use Acceptance Link</>
         }
       </Button>
 
@@ -210,7 +161,7 @@ const SendTab = () => {
 
       {generatedLink && (
         <div className="space-y-3 pt-2">
-          <Label className="font-medium">Onboarding Link</Label>
+          <Label className="font-medium">TJ Terms of Use Acceptance Link</Label>
           <div className="flex items-center gap-2">
             <Input value={generatedLink} readOnly className="font-mono text-sm" />
             <Button variant="outline" size="icon" onClick={handleCopy}>
@@ -219,7 +170,7 @@ const SendTab = () => {
           </div>
           <Button variant="secondary" className="w-full" asChild>
             <a href={`/onboarding/${generatedLink.split("/onboarding/")[1]}`}>
-              <ExternalLink className="mr-2 h-4 w-4" /> Open Onboarding Link
+              <ExternalLink className="mr-2 h-4 w-4" /> Open TJ Terms of Use Acceptance Link
             </a>
           </Button>
           {copied && <p className="text-sm text-success font-medium">Copied to clipboard!</p>}
@@ -316,8 +267,6 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
           </div>
         </div>
         <div className="flex gap-2 flex-wrap pt-1">
-          {session.adminConfig.products.inPersonPayments && <Badge variant="secondary">In-person Payments</Badge>}
-          {session.adminConfig.products.reconPro && <Badge variant="secondary">Recon Pro</Badge>}
           {session.termsAccepted && <Badge variant="outline" className="text-success border-success">Terms Accepted</Badge>}
           {session.feesAccepted && <Badge variant="outline" className="text-success border-success">Fees Accepted</Badge>}
         </div>
@@ -472,8 +421,8 @@ const ReviewTab = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
         <ClipboardList className="h-12 w-12 text-muted-foreground/40" />
-        <p className="font-medium text-muted-foreground">No completed onboarding requests yet</p>
-        <p className="text-sm text-muted-foreground">Once a merchant completes an onboarding form, it will appear here for review.</p>
+        <p className="font-medium text-muted-foreground">No completed TJ Terms of Use Acceptance requests yet</p>
+        <p className="text-sm text-muted-foreground">Once a merchant completes terms and fees acceptance, it will appear here for review.</p>
       </div>
     );
   }
@@ -529,22 +478,22 @@ const Admin = () => {
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md flex items-center gap-4">
         <img src={tjLogo} alt="Transaction Junction" className="h-8 brightness-0 invert" />
-        <span className="text-xl font-semibold tracking-tight">Merchant Onboarding — Admin</span>
+        <span className="text-xl font-semibold tracking-tight">TJ Terms of Use Acceptance — Admin</span>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-8">
         <Tabs defaultValue="send">
           <TabsList className="w-full mb-6">
-            <TabsTrigger value="send" className="flex-1">Send Onboarding Link</TabsTrigger>
-            <TabsTrigger value="review" className="flex-1">Review Onboarding Requests</TabsTrigger>
+            <TabsTrigger value="send" className="flex-1">Send TJ Terms of Use Acceptance Link</TabsTrigger>
+            <TabsTrigger value="review" className="flex-1">Review TJ Terms of Use Acceptance Requests</TabsTrigger>
           </TabsList>
 
           <TabsContent value="send">
             <Card className="shadow-sm">
               <CardHeader className="space-y-1">
-                <CardTitle className="text-xl font-semibold">Send merchant onboarding link</CardTitle>
+                <CardTitle className="text-xl font-semibold">Send TJ Terms of Use Acceptance link</CardTitle>
                 <CardDescription>
-                  Paste a HubSpot deal URL to pre-populate the onboarding form with deal, company, and contact data.
+                  Paste a HubSpot deal URL to pre-populate the terms and fees acceptance flow with deal, company, and contact data.
                 </CardDescription>
               </CardHeader>
               <CardContent>

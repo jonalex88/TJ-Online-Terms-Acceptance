@@ -8,9 +8,9 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { label: "Business Details", description: "Companies, contacts & stores" },
   { label: "Terms of Use", description: "Review and accept terms" },
   { label: "Fees", description: "Review and accept fees" },
+  { label: "Confirmation", description: "Authorise and sign" },
 ];
 
 interface WizardLayoutProps {
@@ -23,7 +23,7 @@ const WizardLayout = ({ currentStep, children }: WizardLayoutProps) => {
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md flex items-center gap-4">
         <img src={tjLogo} alt="Transaction Junction" className="h-8 brightness-0 invert" />
-        <span className="text-xl font-semibold tracking-tight">Merchant Onboarding</span>
+        <span className="text-xl font-semibold tracking-tight">TJ Terms of Use Acceptance</span>
       </header>
 
       <div className="max-w-5xl mx-auto px-4 py-8">

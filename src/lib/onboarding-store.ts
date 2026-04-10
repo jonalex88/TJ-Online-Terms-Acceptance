@@ -7,6 +7,12 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
+function generateSessionToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
   hubspotDealUrl: "",
   bulkDeal: false,
@@ -25,7 +31,7 @@ export function createSession(
   hubspot: { dealId: string; dealUrl: string; companyId: string },
   prefill?: HubSpotFetchResult
 ): string {
-  const sessionId = generateId();
+  const sessionId = generateSessionToken();
   const prefilledContacts = (prefill?.contacts ?? []).map((contact, index) => ({
     ...contact,
     receiveInvoices: contact.receiveInvoices || index === 0,

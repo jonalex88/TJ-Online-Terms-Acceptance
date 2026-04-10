@@ -77,6 +77,12 @@ export interface AdminConfig {
   };
 }
 
+export interface Signer {
+  fullName: string;
+  jobTitle: string;
+  authorizedConfirmed: boolean;
+}
+
 export interface OnboardingData {
   sessionId: string;
   hubspotDealId: string;
@@ -88,6 +94,8 @@ export interface OnboardingData {
   termsAccepted: boolean;
   feesAccepted: boolean;
   acceptanceEmail: string;
+  signer?: Signer;
+  acceptanceCertificateUrl?: string;
   currentStep: number;
   createdAt: string;
   updatedAt: string;

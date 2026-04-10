@@ -13,7 +13,7 @@ const OnboardingRouter = () => {
         <Card className="max-w-md">
           <CardContent className="pt-6 text-center space-y-2">
             <p className="text-lg font-semibold">Invalid or expired link</p>
-            <p className="text-muted-foreground text-sm">Please contact your account manager for a new onboarding link.</p>
+            <p className="text-muted-foreground text-sm">Please contact your account manager for a new TJ Terms of Use Acceptance link.</p>
           </CardContent>
         </Card>
       </div>
