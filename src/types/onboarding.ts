@@ -1,24 +1,33 @@
 export interface Contact {
   id: string;
+  hubspotId?: string;
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  role: string;
-  idNumber: string;
+  designation: string;
+  receiveInvoices: boolean;
+  allowMarketing: boolean;
 }
 
 export interface Store {
   id: string;
-  storeName: string;
-  storeCode: string;
-  address: string;
+  brand?: string;
+  tradingSiteName: string;
+  posProvider: string;
+  buildingName: string;
+  buildingNumber: string;
+  streetNumber: string;
+  streetAddress: string;
+  suburb: string;
   city: string;
   province: string;
+  country: string;
   postalCode: string;
-  phone: string;
-  email: string;
-  terminalCount: number;
+  counterDevices: number;
+  mobileDevices: number;
+  acquiringBank: string;
+  acquiringBankMid: string;
 }
 
 export interface Document {
@@ -32,14 +41,20 @@ export interface Document {
 
 export interface Company {
   id: string;
-  companyName: string;
+  hubspotId?: string;
+  registeredCompanyName: string;
   registrationNumber: string;
-  vatNumber: string;
+  vatNumber?: string;
   tradingName: string;
   industry: string;
-  address: string;
+  buildingName: string;
+  buildingNumber: string;
+  streetNumber: string;
+  streetAddress: string;
+  suburb: string;
   city: string;
   province: string;
+  country: string;
   postalCode: string;
   contacts: Contact[];
   stores: Store[];
@@ -47,12 +62,13 @@ export interface Company {
 }
 
 export interface AdminConfig {
-  companyUrl: string;
+  hubspotDealUrl: string;
+  bulkDeal: boolean;
   products: {
     inPersonPayments: boolean;
     reconPro: boolean;
   };
-  agreementUploadRequired: boolean;
+  agreementType: "accept-terms" | "sign-agreements" | "already-in-place";
   fees: {
     monthlyFeePerDevice: number;
     monthlyCloudHostingFeePerDevice: number;
@@ -63,12 +79,18 @@ export interface AdminConfig {
 
 export interface OnboardingData {
   sessionId: string;
+  hubspotDealId: string;
+  hubspotDealUrl: string;
   hubspotCompanyId: string;
   adminConfig: AdminConfig;
   companies: Company[];
+  bulkDeal?: boolean;
   termsAccepted: boolean;
   feesAccepted: boolean;
+  acceptanceEmail: string;
   currentStep: number;
   createdAt: string;
   updatedAt: string;
+  submittedToHubspot?: boolean;
+  submittedAt?: string;
 }

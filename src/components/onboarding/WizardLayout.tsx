@@ -9,7 +9,6 @@ interface Step {
 
 const STEPS: Step[] = [
   { label: "Business Details", description: "Companies, contacts & stores" },
-  { label: "Documents", description: "Upload required documents" },
   { label: "Terms of Use", description: "Review and accept terms" },
   { label: "Fees", description: "Review and accept fees" },
 ];

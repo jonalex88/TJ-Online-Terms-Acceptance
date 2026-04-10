@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Contact } from "@/types/onboarding";
+import { toast } from "sonner";
 
 interface AddContactModalProps {
   open: boolean;
@@ -13,16 +15,34 @@ interface AddContactModalProps {
 }
 
 const AddContactModal = ({ open, onClose, onSave, initialData }: AddContactModalProps) => {
-  const [form, setForm] = useState({
-    firstName: initialData?.firstName || "",
-    lastName: initialData?.lastName || "",
-    email: initialData?.email || "",
-    phone: initialData?.phone || "",
-    role: initialData?.role || "",
-    idNumber: initialData?.idNumber || "",
+  const getInitialForm = (data?: Contact) => ({
+    firstName: data?.firstName || "",
+    lastName: data?.lastName || "",
+    email: data?.email || "",
+    phone: data?.phone || "",
+    designation: data?.designation || "",
+    receiveInvoices: data?.receiveInvoices || false,
+    allowMarketing: data?.allowMarketing || false,
   });
 
-  const update = (field: string, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
+  const [form, setForm] = useState(getInitialForm(initialData));
+
+  useEffect(() => {
+    if (open) {
+      setForm(getInitialForm(initialData));
+    }
+  }, [initialData, open]);
+
+  const update = (field: string, value: string | boolean) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleReceiveInvoicesChange = (checked: boolean) => {
+    if (!checked && form.receiveInvoices) {
+      toast.message("to change this, set another user to receive invoices");
+      return;
+    }
+
+    update("receiveInvoices", checked);
+  };
 
   const handleSave = () => {
     if (!form.firstName.trim() || !form.lastName.trim()) return;
@@ -57,14 +77,32 @@ const AddContactModal = ({ open, onClose, onSave, initialData }: AddContactModal
               <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Role / Title</Label>
-              <Input value={form.role} onChange={(e) => update("role", e.target.value)} />
+          <div className="space-y-2">
+            <Label>Designation</Label>
+            <Input value={form.designation} onChange={(e) => update("designation", e.target.value)} />
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="receiveInvoices"
+                checked={form.receiveInvoices}
+                onCheckedChange={(checked) => handleReceiveInvoicesChange(Boolean(checked))}
+              />
+              <Label htmlFor="receiveInvoices" className="font-normal cursor-pointer">
+                {form.receiveInvoices
+                  ? "Invoices should be sent to this contact"
+                  : "set this user to receive invoices."}
+              </Label>
             </div>
-            <div className="space-y-2">
-              <Label>ID Number</Label>
-              <Input value={form.idNumber} onChange={(e) => update("idNumber", e.target.value)} />
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="allowMarketing"
+                checked={form.allowMarketing}
+                onCheckedChange={(checked) => update("allowMarketing", checked as boolean)}
+              />
+              <Label htmlFor="allowMarketing" className="font-normal cursor-pointer">
+                Allow TJ to send information to this contact (every email will have an opt out link)
+              </Label>
             </div>
           </div>
         </div>

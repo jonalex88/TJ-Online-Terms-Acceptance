@@ -1,24 +1,78 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { createSession, DEFAULT_ADMIN_CONFIG } from "@/lib/onboarding-store";
-import { AdminConfig } from "@/types/onboarding";
-import { Copy, CheckCircle, Link as LinkIcon, ExternalLink } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { createSession, DEFAULT_ADMIN_CONFIG, listAllSessions, markSubmitted } from "@/lib/onboarding-store";
+import { extractDealId, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot";
+import { AdminConfig, OnboardingData } from "@/types/onboarding";
+import {
+  Copy, CheckCircle, Link as LinkIcon, ExternalLink, Loader2, AlertCircle, Building2,
+  ArrowLeft, Send, User, MapPin, FileText, Mail, ClipboardList, CheckCircle2,
+} from "lucide-react";
 import tjLogo from "@/assets/tj-logo.png";
-const Admin = () => {
+
+const formatCurrency = (n: number) =>
+  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(n);
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleString("en-ZA", {
+    year: "numeric", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+// ---------------------------------------------------------------------------
+// Send Tab
+// ---------------------------------------------------------------------------
+const SendTab = () => {
+  const [dealUrl, setDealUrl] = useState("");
   const [config, setConfig] = useState<AdminConfig>({ ...DEFAULT_ADMIN_CONFIG });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [prefetchedData, setPrefetchedData] = useState<HubSpotFetchResult | null>(null);
   const [generatedLink, setGeneratedLink] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const handleGenerate = () => {
-    if (!config.companyUrl.trim()) return;
-    const sessionId = createSession(config.companyUrl.trim(), config);
-    const link = `${window.location.origin}/onboarding/${sessionId}`;
-    setGeneratedLink(link);
+  const dealId = extractDealId(dealUrl.trim());
+
+  const handleGenerate = async () => {
+    const trimmedUrl = dealUrl.trim();
+    if (!trimmedUrl) return;
+    const id = extractDealId(trimmedUrl);
+    if (!id) {
+      setError("Could not extract a deal ID from that URL. Please paste a valid HubSpot deal URL.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setPrefetchedData(null);
+    let hubspotData: HubSpotFetchResult | undefined;
+    try {
+      hubspotData = await fetchDealData(id);
+      setPrefetchedData(hubspotData);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? `Failed to fetch HubSpot data: ${err.message}`
+          : "Failed to fetch HubSpot data. The link will still be generated with an empty form."
+      );
+    } finally {
+      setLoading(false);
+    }
+    const updatedConfig: AdminConfig = { ...config, hubspotDealUrl: trimmedUrl };
+    setConfig(updatedConfig);
+    const sessionId = createSession(
+      updatedConfig,
+      { dealId: id, dealUrl: trimmedUrl, companyId: hubspotData?.hubspotCompanyId ?? "" },
+      hubspotData
+    );
+    setGeneratedLink(`${window.location.origin}/onboarding/${sessionId}`);
     setCopied(false);
   };
 
@@ -35,147 +89,475 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg shadow-lg">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <img src={tjLogo} alt="Transaction Junction" className="h-10" />
-          </div>
-          <CardTitle className="text-2xl font-semibold">Send merchant onboarding link</CardTitle>
-          <CardDescription>
-            Configure and generate a unique onboarding link for a merchant.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Company URL */}
-          <div className="space-y-2">
-            <Label htmlFor="company-url" className="font-medium">Company URL</Label>
-            <Input
-              id="company-url"
-              placeholder="e.g. https://acme.co.za"
-              value={config.companyUrl}
-              onChange={(e) => setConfig((prev) => ({ ...prev, companyUrl: e.target.value }))}
-            />
-          </div>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="deal-url" className="font-medium">HubSpot Deal URL *</Label>
+        <Input
+          id="deal-url"
+          placeholder="https://app-eu1.hubspot.com/contacts/12345/deal/67890"
+          value={dealUrl}
+          onChange={(e) => { setDealUrl(e.target.value); setError(""); setGeneratedLink(""); setPrefetchedData(null); }}
+        />
+        {dealUrl && !dealId && (
+          <p className="text-xs text-destructive">Please enter a valid HubSpot deal URL containing a deal ID.</p>
+        )}
+        {dealUrl && dealId && (
+          <p className="text-xs text-muted-foreground">Deal ID detected: <span className="font-mono">{dealId}</span></p>
+        )}
+      </div>
 
-          {/* Products */}
-          <div className="space-y-3">
-            <Label className="font-medium">Products</Label>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="inperson"
-                  checked={config.products.inPersonPayments}
-                  onCheckedChange={(checked) =>
-                    setConfig((prev) => ({ ...prev, products: { ...prev.products, inPersonPayments: !!checked } }))
-                  }
-                />
-                <label htmlFor="inperson" className="text-sm cursor-pointer">In-person payments</label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="reconpro"
-                  checked={config.products.reconPro}
-                  onCheckedChange={(checked) =>
-                    setConfig((prev) => ({ ...prev, products: { ...prev.products, reconPro: !!checked } }))
-                  }
-                />
-                <label htmlFor="reconpro" className="text-sm cursor-pointer">Recon Pro</label>
-              </div>
-            </div>
+      <div className="space-y-3">
+        <Label className="font-medium">Bulk Deal</Label>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={config.bulkDeal}
+            onCheckedChange={(checked) =>
+              setConfig((prev) => ({ ...prev, bulkDeal: checked }))
+            }
+          />
+          <span className="text-sm text-muted-foreground">
+            {config.bulkDeal
+              ? "One deal, many sites"
+              : "One deal per site"}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="font-medium">Products</Label>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Checkbox id="inperson" checked={config.products.inPersonPayments}
+              onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, products: { ...prev.products, inPersonPayments: !!checked } }))} />
+            <label htmlFor="inperson" className="text-sm cursor-pointer">In-person payments</label>
           </div>
-
-          {/* Agreement Type */}
-          <div className="space-y-3">
-            <Label className="font-medium">Agreement Type</Label>
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={config.agreementUploadRequired}
-                onCheckedChange={(checked) =>
-                  setConfig((prev) => ({ ...prev, agreementUploadRequired: checked }))
-                }
-              />
-              <span className="text-sm text-muted-foreground">
-                {config.agreementUploadRequired
-                  ? "Agreement upload required"
-                  : "Only acceptance of terms required"}
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
+            <Checkbox id="reconpro" checked={config.products.reconPro}
+              onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, products: { ...prev.products, reconPro: !!checked } }))} />
+            <label htmlFor="reconpro" className="text-sm cursor-pointer">Recon Pro</label>
           </div>
+        </div>
+      </div>
 
-          {/* Fees */}
-          <div className="space-y-3">
-            <Label className="font-medium">Fees</Label>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="fee-device" className="text-xs text-muted-foreground">Lane fee</Label>
-                <Input
-                  id="fee-device"
-                  type="number"
-                  className="w-32"
-                  value={config.fees.monthlyFeePerDevice}
-                  onChange={(e) => updateFee("monthlyFeePerDevice", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="fee-cloud" className="text-xs text-muted-foreground">Cloud fee</Label>
-                <Input
-                  id="fee-cloud"
-                  type="number"
-                  className="w-32"
-                  value={config.fees.monthlyCloudHostingFeePerDevice}
-                  onChange={(e) => updateFee("monthlyCloudHostingFeePerDevice", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="fee-recon" className="text-xs text-muted-foreground">Recon Pro fee</Label>
-                <Input
-                  id="fee-recon"
-                  type="number"
-                  className="w-32"
-                  value={config.fees.monthlyReconProFeePerSite}
-                  onChange={(e) => updateFee("monthlyReconProFeePerSite", e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="fee-setup" className="text-xs text-muted-foreground">Config fee</Label>
-                <Input
-                  id="fee-setup"
-                  type="number"
-                  className="w-32"
-                  value={config.fees.oneOffSetupFeePerSite}
-                  onChange={(e) => updateFee("oneOffSetupFeePerSite", e.target.value)}
-                />
-              </div>
-            </div>
+      <div className="space-y-3">
+        <Label htmlFor="agreement-type" className="font-medium">Agreement Type</Label>
+        <Select value={config.agreementType} onValueChange={(value) => setConfig((prev) => ({ ...prev, agreementType: value as "accept-terms" | "sign-agreements" | "already-in-place" }))}>
+          <SelectTrigger id="agreement-type">
+            <SelectValue placeholder="Select agreement type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="accept-terms">Accept terms</SelectItem>
+            <SelectItem value="sign-agreements">Sign agreements</SelectItem>
+            <SelectItem value="already-in-place">Already in place</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-3">
+        <Label className="font-medium">Fees</Label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="fee-device" className="text-xs text-muted-foreground">Lane fee</Label>
+            <Input id="fee-device" type="number" className="w-32" value={config.fees.monthlyFeePerDevice} onChange={(e) => updateFee("monthlyFeePerDevice", e.target.value)} />
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="fee-cloud" className="text-xs text-muted-foreground">Cloud fee</Label>
+            <Input id="fee-cloud" type="number" className="w-32" value={config.fees.monthlyCloudHostingFeePerDevice} onChange={(e) => updateFee("monthlyCloudHostingFeePerDevice", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fee-recon" className="text-xs text-muted-foreground">Recon Pro fee</Label>
+            <Input id="fee-recon" type="number" className="w-32" value={config.fees.monthlyReconProFeePerSite} onChange={(e) => updateFee("monthlyReconProFeePerSite", e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fee-setup" className="text-xs text-muted-foreground">Config fee</Label>
+            <Input id="fee-setup" type="number" className="w-32" value={config.fees.oneOffSetupFeePerSite} onChange={(e) => updateFee("oneOffSetupFeePerSite", e.target.value)} />
+          </div>
+        </div>
+      </div>
 
-          <Button onClick={handleGenerate} className="w-full" disabled={!config.companyUrl.trim()}>
-            <LinkIcon className="mr-2 h-4 w-4" />
-            Generate Onboarding Link
-          </Button>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-          {generatedLink && (
-            <div className="space-y-3 pt-2">
-              <Label className="font-medium">Onboarding Link</Label>
-              <div className="flex items-center gap-2">
-                <Input value={generatedLink} readOnly className="font-mono text-sm" />
-                <Button variant="outline" size="icon" onClick={handleCopy}>
-                  {copied ? <CheckCircle className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-              <Button variant="secondary" className="w-full" asChild>
-                <a href={`/onboarding/${generatedLink.split("/onboarding/")[1]}`}>
-                  <ExternalLink className="mr-2 h-4 w-4" /> Open Onboarding Link
-                </a>
-              </Button>
-              {copied && (
-                <p className="text-sm text-success font-medium">Copied to clipboard!</p>
-              )}
-            </div>
+      <Button onClick={handleGenerate} className="w-full" disabled={!dealUrl.trim() || !dealId || loading}>
+        {loading
+          ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Fetching from HubSpot…</>
+          : <><LinkIcon className="mr-2 h-4 w-4" />Generate Onboarding Link</>
+        }
+      </Button>
+
+      {prefetchedData && (
+        <div className="rounded-lg border bg-muted/40 p-4 space-y-2 text-sm">
+          <p className="font-semibold flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" />Pre-populated from HubSpot</p>
+          {prefetchedData.company.registeredCompanyName && (
+            <p className="text-muted-foreground">Company: <span className="text-foreground font-medium">{prefetchedData.company.registeredCompanyName}</span></p>
           )}
+          {prefetchedData.store.tradingSiteName && (
+            <p className="text-muted-foreground">Store: <span className="text-foreground font-medium">{prefetchedData.store.tradingSiteName}</span></p>
+          )}
+          {prefetchedData.contacts.length > 0 && (
+            <p className="text-muted-foreground">
+              Contacts: <span className="text-foreground font-medium">
+                {prefetchedData.contacts.map((c) => `${c.firstName} ${c.lastName}`.trim()).filter(Boolean).join(", ")}
+              </span>
+            </p>
+          )}
+        </div>
+      )}
+
+      {generatedLink && (
+        <div className="space-y-3 pt-2">
+          <Label className="font-medium">Onboarding Link</Label>
+          <div className="flex items-center gap-2">
+            <Input value={generatedLink} readOnly className="font-mono text-sm" />
+            <Button variant="outline" size="icon" onClick={handleCopy}>
+              {copied ? <CheckCircle className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <Button variant="secondary" className="w-full" asChild>
+            <a href={`/onboarding/${generatedLink.split("/onboarding/")[1]}`}>
+              <ExternalLink className="mr-2 h-4 w-4" /> Open Onboarding Link
+            </a>
+          </Button>
+          {copied && <p className="text-sm text-success font-medium">Copied to clipboard!</p>}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Review Detail
+// ---------------------------------------------------------------------------
+const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: () => void }) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(session.submittedToHubspot ?? false);
+  const [submitError, setSubmitError] = useState("");
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+      const res = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hubspotDealId: session.hubspotDealId,
+          companies: session.companies,
+        }),
+      });
+      const body = await res.json().catch(() => ({})) as { error?: string; errors?: string[]; updated?: string[]; created?: string[] };
+      if (!res.ok) {
+        throw new Error(body.error ?? `Server error (${res.status})`);
+      }
+      // Partial success — show any non-fatal errors as a warning but still mark submitted
+      if (body.errors && body.errors.length > 0) {
+        setSubmitError(`Submitted with warnings:\n${body.errors.join("\n")}`);
+      }
+      markSubmitted(session.sessionId);
+      setSubmitted(true);
+    } catch (err) {
+      if (err instanceof Error) setSubmitError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const fees = session.adminConfig.fees;
+  const totalStores = session.companies.reduce((s, c) => s + c.stores.length, 0);
+  const totalDevices = session.companies.reduce(
+    (s, c) => s + c.stores.reduce((ss, st) => ss + st.counterDevices + st.mobileDevices, 0), 0
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack} className="gap-2 pl-0">
+          <ArrowLeft className="h-4 w-4" /> Back to list
+        </Button>
+        <div className="flex items-center gap-3">
+          {submitted ? (
+            <Badge className="gap-1 bg-success text-success-foreground">
+              <CheckCircle2 className="h-3 w-3" /> Submitted to HubSpot
+            </Badge>
+          ) : (
+            <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Submit to HubSpot
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {submitError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{submitError}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="font-semibold text-lg">{session.companies[0]?.registeredCompanyName || "Unnamed Company"}</p>
+            {session.companies[0]?.tradingName && (
+              <p className="text-sm text-muted-foreground">t/a {session.companies[0].tradingName}</p>
+            )}
+          </div>
+          <div className="text-right text-xs text-muted-foreground space-y-0.5">
+            <p>Completed: {formatDate(session.updatedAt)}</p>
+            {session.acceptanceEmail && (
+              <p className="flex items-center gap-1 justify-end"><Mail className="h-3 w-3" />{session.acceptanceEmail}</p>
+            )}
+            <p className="font-mono">Deal: {session.hubspotDealId}</p>
+          </div>
+        </div>
+        <div className="flex gap-2 flex-wrap pt-1">
+          {session.adminConfig.products.inPersonPayments && <Badge variant="secondary">In-person Payments</Badge>}
+          {session.adminConfig.products.reconPro && <Badge variant="secondary">Recon Pro</Badge>}
+          {session.termsAccepted && <Badge variant="outline" className="text-success border-success">Terms Accepted</Badge>}
+          {session.feesAccepted && <Badge variant="outline" className="text-success border-success">Fees Accepted</Badge>}
+        </div>
+      </div>
+
+      {session.companies.map((company) => (
+        <Card key={company.id}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10"><Building2 className="h-4 w-4 text-primary" /></div>
+              <div>
+                <CardTitle className="text-base">{company.registeredCompanyName || "Unnamed Company"}</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  {[company.tradingName && `t/a ${company.tradingName}`, company.registrationNumber && `Reg: ${company.registrationNumber}`].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {(company.streetAddress || company.city) && (
+              <div className="text-sm text-muted-foreground space-y-0.5">
+                {[company.buildingName, company.streetNumber && `${company.streetNumber} ${company.streetAddress}`, company.suburb, company.city, company.province, company.postalCode, company.country].filter(Boolean).map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            )}
+            <Separator />
+            <div>
+              <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                <User className="h-4 w-4 text-muted-foreground" /> Contacts
+              </h4>
+              {company.contacts.length === 0
+                ? <p className="text-sm text-muted-foreground italic pl-6">No contacts</p>
+                : (
+                  <div className="space-y-2 pl-6">
+                    {company.contacts.map((c) => (
+                      <div key={c.id} className="bg-muted/40 rounded-lg px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{c.firstName} {c.lastName}</p>
+                          <div className="flex gap-1">
+                            {c.receiveInvoices && <Badge variant="secondary" className="text-xs">Invoice receiver</Badge>}
+                            {c.allowMarketing && <Badge variant="outline" className="text-xs">Marketing</Badge>}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {[c.designation, c.email, c.phone].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+            <Separator />
+            <div>
+              <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" /> Stores
+              </h4>
+              {company.stores.length === 0
+                ? <p className="text-sm text-muted-foreground italic pl-6">No stores</p>
+                : (
+                  <div className="space-y-2 pl-6">
+                    {company.stores.map((s) => (
+                      <div key={s.id} className="bg-muted/40 rounded-lg px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{s.tradingSiteName || "Unnamed Store"}</p>
+                          <span className="text-xs text-muted-foreground">
+                            {s.counterDevices + s.mobileDevices} device{(s.counterDevices + s.mobileDevices) !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {[s.city, s.province].filter(Boolean).join(", ")}
+                          {s.acquiringBank && ` · Bank: ${s.acquiringBank}`}
+                          {s.counterDevices > 0 && ` · ${s.counterDevices} counter`}
+                          {s.mobileDevices > 0 && ` · ${s.mobileDevices} mobile`}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+            <Separator />
+            <div>
+              <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                <FileText className="h-4 w-4 text-muted-foreground" /> Documents
+              </h4>
+              <div className="space-y-1 pl-6">
+                {(["debit_order_mandate", "proof_of_bank_account"] as const).map((slotType) => {
+                  const doc = company.documents.find((d) => d.type === slotType);
+                  const label = slotType === "debit_order_mandate" ? "Debit Order Mandate" : "Proof of Bank Account";
+                  return (
+                    <div key={slotType} className="flex items-center gap-2 text-sm">
+                      {doc
+                        ? <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                        : <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                      }
+                      <span className={doc ? "text-foreground" : "text-amber-600"}>{label}</span>
+                      {doc && <span className="text-xs text-muted-foreground truncate">— {doc.name}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Configured Fees</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm space-y-2">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+            <span className="text-muted-foreground">Lane fee (per device)</span><span>{formatCurrency(fees.monthlyFeePerDevice)}</span>
+            <span className="text-muted-foreground">Cloud fee (per device)</span><span>{formatCurrency(fees.monthlyCloudHostingFeePerDevice)}</span>
+            <span className="text-muted-foreground">Recon Pro (per store)</span><span>{formatCurrency(fees.monthlyReconProFeePerSite)}</span>
+            <span className="text-muted-foreground">Config fee (per store)</span><span>{formatCurrency(fees.oneOffSetupFeePerSite)}</span>
+          </div>
+          <Separator />
+          <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-medium">
+            <span className="text-muted-foreground">Total stores</span><span>{totalStores}</span>
+            <span className="text-muted-foreground">Total devices</span><span>{totalDevices}</span>
+          </div>
         </CardContent>
       </Card>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Review Tab (list + drilldown)
+// ---------------------------------------------------------------------------
+const ReviewTab = () => {
+  const [sessions, setSessions] = useState<OnboardingData[]>(() =>
+    listAllSessions().filter((s) => s.currentStep >= 3)
+  );
+  const [selected, setSelected] = useState<OnboardingData | null>(null);
+
+  const refresh = useCallback(() => {
+    setSessions(listAllSessions().filter((s) => s.currentStep >= 3));
+  }, []);
+
+  const handleBack = () => {
+    setSelected(null);
+    refresh();
+  };
+
+  if (selected) {
+    return <ReviewDetail session={selected} onBack={handleBack} />;
+  }
+
+  if (sessions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
+        <ClipboardList className="h-12 w-12 text-muted-foreground/40" />
+        <p className="font-medium text-muted-foreground">No completed onboarding requests yet</p>
+        <p className="text-sm text-muted-foreground">Once a merchant completes an onboarding form, it will appear here for review.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {sessions.map((s) => {
+        const company = s.companies[0];
+        const totalStores = s.companies.reduce((sum, c) => sum + c.stores.length, 0);
+        const totalContacts = s.companies.reduce((sum, c) => sum + c.contacts.length, 0);
+        return (
+          <button
+            key={s.sessionId}
+            onClick={() => setSelected(s)}
+            className="w-full text-left rounded-lg border bg-card hover:bg-muted/40 transition-colors p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                  <Building2 className="h-4 w-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{company?.registeredCompanyName || "Unnamed Company"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {[
+                      company?.tradingName && `t/a ${company.tradingName}`,
+                      `${totalStores} store${totalStores !== 1 ? "s" : ""}`,
+                      `${totalContacts} contact${totalContacts !== 1 ? "s" : ""}`,
+                    ].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {s.submittedToHubspot
+                  ? <Badge className="bg-success text-success-foreground text-xs">Submitted</Badge>
+                  : <Badge variant="outline" className="text-xs">Pending review</Badge>
+                }
+                <span className="text-xs text-muted-foreground hidden sm:block">{formatDate(s.updatedAt)}</span>
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Admin root
+// ---------------------------------------------------------------------------
+const Admin = () => {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md flex items-center gap-4">
+        <img src={tjLogo} alt="Transaction Junction" className="h-8 brightness-0 invert" />
+        <span className="text-xl font-semibold tracking-tight">Merchant Onboarding — Admin</span>
+      </header>
+
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <Tabs defaultValue="send">
+          <TabsList className="w-full mb-6">
+            <TabsTrigger value="send" className="flex-1">Send Onboarding Link</TabsTrigger>
+            <TabsTrigger value="review" className="flex-1">Review Onboarding Requests</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="send">
+            <Card className="shadow-sm">
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-xl font-semibold">Send merchant onboarding link</CardTitle>
+                <CardDescription>
+                  Paste a HubSpot deal URL to pre-populate the onboarding form with deal, company, and contact data.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SendTab />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="review">
+            <ReviewTab />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { OnboardingData, Company, Contact, Store, Document, AdminConfig } from "@/types/onboarding";
+import { HubSpotFetchResult } from "@/lib/hubspot";
 
 const STORAGE_PREFIX = "onboarding_";
 
@@ -7,9 +8,10 @@ function generateId(): string {
 }
 
 export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
-  companyUrl: "",
+  hubspotDealUrl: "",
+  bulkDeal: false,
   products: { inPersonPayments: true, reconPro: true },
-  agreementUploadRequired: false,
+  agreementType: "accept-terms",
   fees: {
     monthlyFeePerDevice: 280,
     monthlyCloudHostingFeePerDevice: 25,
@@ -18,31 +20,56 @@ export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
   },
 };
 
-export function createSession(hubspotCompanyId: string, adminConfig: AdminConfig): string {
+export function createSession(
+  adminConfig: AdminConfig,
+  hubspot: { dealId: string; dealUrl: string; companyId: string },
+  prefill?: HubSpotFetchResult
+): string {
   const sessionId = generateId();
+  const prefilledContacts = (prefill?.contacts ?? []).map((contact, index) => ({
+    ...contact,
+    receiveInvoices: contact.receiveInvoices || index === 0,
+  }));
+
+  if (prefilledContacts.length > 0 && prefilledContacts.every((contact) => !contact.receiveInvoices)) {
+    prefilledContacts[0] = { ...prefilledContacts[0], receiveInvoices: true };
+  }
+
+  const initialCompany: Company = {
+    id: generateId(),
+    hubspotId: hubspot.companyId || undefined,
+    registeredCompanyName: prefill?.company.registeredCompanyName ?? "",
+    registrationNumber: prefill?.company.registrationNumber ?? "",
+    vatNumber: prefill?.company.vatNumber ?? "",
+    tradingName: prefill?.company.tradingName ?? "",
+    industry: prefill?.company.industry ?? "",
+    buildingName: prefill?.company.buildingName ?? "",
+    buildingNumber: prefill?.company.buildingNumber ?? "",
+    streetNumber: prefill?.company.streetNumber ?? "",
+    streetAddress: prefill?.company.streetAddress ?? "",
+    suburb: prefill?.company.suburb ?? "",
+    city: prefill?.company.city ?? "",
+    province: prefill?.company.province ?? "",
+    country: prefill?.company.country ?? "",
+    postalCode: prefill?.company.postalCode ?? "",
+    contacts: prefilledContacts,
+    stores: prefill?.store
+      ? [{ id: generateId(), ...defaultStore(), ...prefill.store } as Store]
+      : [],
+    documents: [],
+  };
+
   const data: OnboardingData = {
     sessionId,
-    hubspotCompanyId,
+    hubspotDealId: hubspot.dealId,
+    hubspotDealUrl: hubspot.dealUrl,
+    hubspotCompanyId: hubspot.companyId,
     adminConfig,
-    companies: [
-      {
-        id: generateId(),
-        companyName: "",
-        registrationNumber: "",
-        vatNumber: "",
-        tradingName: "",
-        industry: "",
-        address: "",
-        city: "",
-        province: "",
-        postalCode: "",
-        contacts: [],
-        stores: [],
-        documents: [],
-      },
-    ],
+    companies: [initialCompany],
+    bulkDeal: adminConfig.bulkDeal,
     termsAccepted: false,
     feesAccepted: false,
+    acceptanceEmail: "",
     currentStep: 0,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -51,10 +78,53 @@ export function createSession(hubspotCompanyId: string, adminConfig: AdminConfig
   return sessionId;
 }
 
+function defaultStore(): Omit<Store, "id"> {
+  return {
+    brand: "",
+    tradingSiteName: "",
+    posProvider: "",
+    buildingName: "",
+    buildingNumber: "",
+    streetNumber: "",
+    streetAddress: "",
+    suburb: "",
+    city: "",
+    province: "",
+    country: "",
+    postalCode: "",
+    counterDevices: 0,
+    mobileDevices: 0,
+    acquiringBank: "",
+    acquiringBankMid: "",
+  };
+}
+
 export function getSession(sessionId: string): OnboardingData | null {
   const raw = localStorage.getItem(STORAGE_PREFIX + sessionId);
   if (!raw) return null;
   return JSON.parse(raw);
+}
+
+export function listAllSessions(): OnboardingData[] {
+  const sessions: OnboardingData[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(STORAGE_PREFIX)) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try { sessions.push(JSON.parse(raw)); } catch { /* skip corrupted */ }
+      }
+    }
+  }
+  return sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+}
+
+export function markSubmitted(sessionId: string): void {
+  const data = getSession(sessionId);
+  if (!data) return;
+  data.submittedToHubspot = true;
+  data.submittedAt = new Date().toISOString();
+  saveSession(data);
 }
 
 export function saveSession(data: OnboardingData): void {
@@ -66,14 +136,19 @@ export function addCompany(sessionId: string): Company {
   const data = getSession(sessionId)!;
   const company: Company = {
     id: generateId(),
-    companyName: "",
+    registeredCompanyName: "",
     registrationNumber: "",
     vatNumber: "",
     tradingName: "",
     industry: "",
-    address: "",
+    buildingName: "",
+    buildingNumber: "",
+    streetNumber: "",
+    streetAddress: "",
+    suburb: "",
     city: "",
     province: "",
+    country: "",
     postalCode: "",
     contacts: [],
     stores: [],
@@ -106,8 +181,9 @@ export function addContact(sessionId: string, companyId: string): Contact {
     lastName: "",
     email: "",
     phone: "",
-    role: "",
-    idNumber: "",
+    designation: "",
+    receiveInvoices: false,
+    allowMarketing: false,
   };
   company.contacts.push(contact);
   saveSession(data);
@@ -134,15 +210,7 @@ export function addStore(sessionId: string, companyId: string): Store {
   const company = data.companies.find((c) => c.id === companyId)!;
   const store: Store = {
     id: generateId(),
-    storeName: "",
-    storeCode: "",
-    address: "",
-    city: "",
-    province: "",
-    postalCode: "",
-    phone: "",
-    email: "",
-    terminalCount: 1,
+    ...defaultStore(),
   };
   company.stores.push(store);
   saveSession(data);

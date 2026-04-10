@@ -122,7 +122,7 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-const Onboarding = () => {
+const OnboardingBulk = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [data, setData] = useState<OnboardingData | null>(null);
   const [companyModal, setCompanyModal] = useState<{ open: boolean; editCompany?: Company }>({ open: false });
@@ -484,4 +484,4 @@ const Onboarding = () => {
   );
 };
 
-export default Onboarding;
+export default OnboardingBulk;
