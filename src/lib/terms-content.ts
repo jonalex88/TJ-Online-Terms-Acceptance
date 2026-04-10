@@ -75,18 +75,18 @@ export const termsOfUseCopy: string[] = [
   "Provide a defined scope of work and cost estimate for any work prior to initiation.",
   "Your Responsibilities",
   "Settle the fees associated with professional services as per the agreement in writing, which may differ from these terms of use.",
-  "7. Additional Services",
+  "8. Additional Services",
   "If you wish to activate additional TJ services, please submit your request via support@switch.tj.",
-  "8. Personal Data and Privacy",
+  "9. Personal Data and Privacy",
   "To deliver our services, TJ needs to store and process certain personal data. By signing this agreement, you consent to this processing. TJ is committed to protecting your privacy and will never sell your data to third parties.",
-  "9. Marketing and Communication",
+  "10. Marketing and Communication",
   "From time to time, TJ may contact you about new products, services, or information that could benefit your business.",
   "By agreeing to our terms of use, you are opting in to receive such communications - every such communication we send you includes an option to unsubscribe at any time.",
-  "10. Standard Terms of Use and Intellectual Property",
+  "11. Standard Terms of Use and Intellectual Property",
   "You may not copy, reverse engineer, or decompile any of Transaction Junction's software, methods, or systems. You must comply with these terms as well as any terms of use or conditions shown on the TJ online portal. If you intentionally breach these terms or act in a way that causes TJ to suffer any loss or liability, you will be responsible for covering that loss.",
-  "11. Liability",
+  "12. Liability",
   "By using our services, you agree that TJ is not responsible for any issues or losses that may arise from their use.",
-  "12. Fees and Payment Terms",
+  "13. Fees and Payment Terms",
   "Fees associated with services will be clearly defined and agreed in writing prior to each service being enabled.",
   "You must sign a debit order mandate authorizing TJ to debit your nominated bank account for all applicable fees.",
   "Monthly and transactional fees will be invoiced in arrears during the first week of each month and debited 30 days later.",
@@ -96,5 +96,5 @@ export const termsOfUseCopy: string[] = [
 ];
 
 export function isTermsHeading(line: string): boolean {
-  return /^(Introduction|Definitions:|Your Responsibilities|Transaction Junction's Responsibilities|\d+\.)/.test(line);
+  return /^\d+\./.test(line);
 }

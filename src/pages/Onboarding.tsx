@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, Receipt,
-  PenLine, Loader2, Download, AlertCircle,
+  PenLine, Loader2, Download, AlertCircle, Printer,
 } from "lucide-react";
 import { termsOfUseCopy, isTermsHeading } from "@/lib/terms-content";
 import { generateAcceptancePdf, blobToBase64, SignerInfo } from "@/lib/generate-pdf";
@@ -194,6 +194,10 @@ const Onboarding = () => {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const laneFee = formatCurrency(data.adminConfig.fees.monthlyFeePerDevice);
   const cloudFee = formatCurrency(data.adminConfig.fees.monthlyCloudHostingFeePerDevice);
   const reconProFee = formatCurrency(data.adminConfig.fees.monthlyReconProFeePerSite);
@@ -290,7 +294,10 @@ const Onboarding = () => {
             </CardContent>
           </Card>
 
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-between pt-4">
+            <Button variant="outline" onClick={handlePrint} size="lg">
+              <Printer className="mr-2 h-4 w-4" /> Print
+            </Button>
             <Button onClick={() => goTo(1)} size="lg" disabled={!termsAccepted}>
               Next: Fees <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -402,9 +409,14 @@ const Onboarding = () => {
           </Card>
 
           <div className="flex justify-between pt-4">
-            <Button variant="outline" onClick={() => goTo(0)} size="lg">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => goTo(0)} size="lg">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button variant="outline" onClick={handlePrint} size="lg">
+                <Printer className="mr-2 h-4 w-4" /> Print
+              </Button>
+            </div>
             <Button onClick={handleSubmitApplication} size="lg" disabled={!canSubmitFees}>
               Continue to Confirmation <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

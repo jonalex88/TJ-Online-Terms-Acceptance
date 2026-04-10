@@ -66,17 +66,17 @@ const AdminAuthGate = ({ children }: AdminAuthGateProps) => {
           <img src={tjLogo} alt="Transaction Junction" className="h-8 w-auto" />
           <div>
             <CardTitle className="text-2xl">TJ Terms of Use Acceptance</CardTitle>
-            <CardDes className="space-y-2">
+            <CardDescription className="pt-1">
+              Admin access is restricted. Sign in with your Microsoft 365 account to continue.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
           <Button onClick={handleSignIn} className="w-full" size="lg">
             <Lock className="mr-2 h-4 w-4" /> Sign in with Microsoft 365
           </Button>
           <Button onClick={() => setAuthSkipped(true)} variant="ghost" className="w-full text-xs">
             Dev: Skip auth
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={handleSignIn} className="w-full" size="lg">
-            <Lock className="mr-2 h-4 w-4" /> Sign in with Microsoft 365
           </Button>
         </CardContent>
       </Card>

@@ -27,6 +27,11 @@ const CONTACT_PROPS = [
   "mobilephone",
   "jobtitle",
 ].join(",");
+const MAX_JSON_BODY_BYTES = 5 * 1024 * 1024;
+const MAX_PDF_BYTES = 8 * 1024 * 1024;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 120;
+const rateLimiterStore = new Map<string, { count: number; windowStart: number }>();
 
 interface HsObject {
   id: string;
@@ -40,6 +45,8 @@ interface HsAssociationResult {
 function writeJson(res: ServerResponse, statusCode: number, body: unknown) {
   res.statusCode = statusCode;
   res.setHeader("Content-Type", "application/json");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "no-store");
   res.end(JSON.stringify(body));
 }
 
@@ -100,13 +107,57 @@ async function hsPut(pathName: string, token: string): Promise<void> {
   }
 }
 
-function readBody(req: IncomingMessage): Promise<string> {
+function readBody(req: IncomingMessage, maxBytes = MAX_JSON_BODY_BYTES): Promise<string> {
   return new Promise((resolve, reject) => {
+    let totalBytes = 0;
     let data = "";
-    req.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+    req.on("data", (chunk: Buffer) => {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        reject(new Error(`Request body too large (max ${maxBytes} bytes).`));
+        return;
+      }
+      data += chunk.toString();
+    });
     req.on("end", () => resolve(data));
     req.on("error", reject);
   });
+}
+
+function getClientIp(req: IncomingMessage): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  const forwardedValue = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  if (forwardedValue) {
+    return forwardedValue.split(",")[0].trim();
+  }
+  return req.socket.remoteAddress ?? "unknown";
+}
+
+function isRateLimited(req: IncomingMessage, routeKey: string): boolean {
+  const now = Date.now();
+  const clientIp = getClientIp(req);
+  const key = `${routeKey}:${clientIp}`;
+  const existing = rateLimiterStore.get(key);
+  if (!existing || now - existing.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimiterStore.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+
+  existing.count += 1;
+  rateLimiterStore.set(key, existing);
+  return existing.count > RATE_LIMIT_MAX_REQUESTS;
+}
+
+function isJsonRequest(req: IncomingMessage): boolean {
+  const contentType = req.headers["content-type"];
+  const value = Array.isArray(contentType) ? contentType[0] : contentType;
+  return Boolean(value && value.toLowerCase().includes("application/json"));
+}
+
+function sanitizeFileName(fileName: string): string {
+  const trimmed = fileName.trim();
+  const safe = trimmed.replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe.length > 0 ? safe.slice(0, 120) : `signed-agreement-${Date.now()}.pdf`;
 }
 
 interface SubmitContact {
@@ -347,6 +398,12 @@ function hubspotProxyPlugin(mode: string): PluginOption {
           return;
         }
 
+        const routeKey = getMatch ? "get-deal" : submitMatch ? "submit" : "attach-pdf";
+        if (isRateLimited(req, routeKey)) {
+          writeJson(res, 429, { error: "Too many requests. Please try again shortly." });
+          return;
+        }
+
         // GET /api/hubspot/deals/:dealId
         if (getMatch) {
           if (req.method !== "GET") {
@@ -369,9 +426,23 @@ function hubspotProxyPlugin(mode: string): PluginOption {
             writeJson(res, 405, { error: "Method not allowed" });
             return;
           }
+          if (!isJsonRequest(req)) {
+            writeJson(res, 415, { error: "Unsupported media type. Expected application/json." });
+            return;
+          }
           try {
             const raw = await readBody(req);
             const body = JSON.parse(raw) as SubmitBody;
+
+            if (!body || !Array.isArray(body.companies)) {
+              writeJson(res, 400, { error: "Invalid submit payload." });
+              return;
+            }
+            if (body.hubspotDealId && body.hubspotDealId !== submitMatch[1]) {
+              writeJson(res, 400, { error: "Deal ID mismatch between URL and payload." });
+              return;
+            }
+
             const result = await submitOnboardingServer(submitMatch[1], body, token);
             if (result.errors.length > 0 && result.updated.length === 0 && result.created.length === 0) {
               writeJson(res, 502, { error: result.errors.join("; "), details: result });
@@ -391,20 +462,40 @@ function hubspotProxyPlugin(mode: string): PluginOption {
             writeJson(res, 405, { error: "Method not allowed" });
             return;
           }
+          if (!isJsonRequest(req)) {
+            writeJson(res, 415, { error: "Unsupported media type. Expected application/json." });
+            return;
+          }
 
           try {
             const dealId = attachMatch[1];
             const raw = await readBody(req);
             const body = JSON.parse(raw) as AttachPdfBody;
 
-            if (!body.pdfBase64 || !body.fileName) {
+            if (!body.pdfBase64 || !body.fileName || !body.signerName || !body.signerEmail) {
               writeJson(res, 400, { error: "Missing required PDF payload." });
               return;
             }
 
+            if (body.signerName.length > 140 || body.signerTitle.length > 140 || body.signerEmail.length > 180) {
+              writeJson(res, 400, { error: "Signer details are invalid." });
+              return;
+            }
+
+            const safeFileName = sanitizeFileName(body.fileName.toLowerCase().endsWith(".pdf") ? body.fileName : `${body.fileName}.pdf`);
+
             const pdfBuffer = Buffer.from(body.pdfBase64, "base64");
+            if (!pdfBuffer || pdfBuffer.length === 0) {
+              writeJson(res, 400, { error: "Invalid PDF content." });
+              return;
+            }
+            if (pdfBuffer.length > MAX_PDF_BYTES) {
+              writeJson(res, 400, { error: "PDF too large." });
+              return;
+            }
+
             const formData = new FormData();
-            formData.append("file", new Blob([pdfBuffer], { type: "application/pdf" }), body.fileName);
+            formData.append("file", new Blob([pdfBuffer], { type: "application/pdf" }), safeFileName);
             formData.append(
               "options",
               JSON.stringify({

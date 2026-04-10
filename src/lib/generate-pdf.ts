@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { OnboardingData } from "@/types/onboarding";
-import { termsOfUseCopy } from "@/lib/terms-content";
+import { termsOfUseCopy, isTermsHeading } from "@/lib/terms-content";
 
 // TJ brand blue
 const TJ_BLUE: [number, number, number] = [15, 65, 155];
@@ -130,10 +130,7 @@ export async function generateAcceptancePdf(
       doc.addPage();
       y = 18;
     }
-    const isHeading =
-      /^(Introduction|Definitions:|Your Responsibilities|Transaction Junction's Responsibilities|\d+\.)/.test(
-        line
-      );
+    const isHeading = isTermsHeading(line);
     if (isHeading) {
       y += 3;
       doc.setFont("helvetica", "bold");
@@ -142,13 +139,14 @@ export async function generateAcceptancePdf(
       doc.setFont("helvetica", "normal");
       doc.setTextColor(40, 40, 40);
     }
-    const wrapped = doc.splitTextToSize(line, contentW);
+    const textX = isHeading ? margin : margin + 5;
+    const wrapped = doc.splitTextToSize(line, isHeading ? contentW : contentW - 5);
     // check again after wrapping in case it's a long heading
     if (y + wrapped.length * 4.5 > 275) {
       doc.addPage();
       y = 18;
     }
-    doc.text(wrapped, margin, y);
+    doc.text(wrapped, textX, y);
     y += wrapped.length * 4.5;
   }
 
