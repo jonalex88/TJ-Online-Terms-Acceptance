@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Admin from "./pages/Admin.tsx";
 import OnboardingRouter from "./pages/OnboardingRouter.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import NotDroids from "./pages/NotDroids.tsx";
 
 const queryClient = new QueryClient();
 
@@ -16,7 +17,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Admin />} />
+          <Route path="/" element={<NotDroids />} />
+          <Route path="/dh38273r3geh837" element={<Admin />} />
           <Route path="/onboarding/:sessionId" element={<OnboardingRouter />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
