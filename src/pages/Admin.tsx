@@ -39,6 +39,7 @@ const SendTab = () => {
   const [config, setConfig] = useState<AdminConfig>({ ...DEFAULT_ADMIN_CONFIG });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [hasTriedGenerate, setHasTriedGenerate] = useState(false);
   const [prefetchedData, setPrefetchedData] = useState<HubSpotFetchResult | null>(null);
   const [generatedLink, setGeneratedLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -60,6 +61,7 @@ const SendTab = () => {
       return;
     }
     setLoading(true);
+    setHasTriedGenerate(true);
     setError("");
     setPrefetchedData(null);
     let hubspotData: HubSpotFetchResult = {
@@ -139,7 +141,11 @@ const SendTab = () => {
         )}
         {dealUrl && dealId && (
           <p className="text-xs text-muted-foreground">
-            {detectedDealName ? `${detectedDealName} detected.` : "Deal URL detected. Click Generate to fetch deal name."}
+            {detectedDealName
+              ? `${detectedDealName} detected.`
+              : hasTriedGenerate
+                ? "Deal name could not be fetched from HubSpot."
+                : "Deal URL detected. Click Generate to fetch deal name."}
           </p>
         )}
       </div>
@@ -159,7 +165,9 @@ const SendTab = () => {
           <p className="text-xs text-muted-foreground">
             {detectedCompanyName
               ? `${detectedCompanyName} detected - wizard will include a company details confirmation step.`
-              : "Company URL detected. Click Generate to fetch company name and enable company details confirmation step."}
+              : hasTriedGenerate
+                ? "Company name could not be fetched from HubSpot."
+                : "Company URL detected. Click Generate to fetch company name and enable company details confirmation step."}
           </p>
         )}
         {!companyUrl.trim() && (
