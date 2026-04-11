@@ -255,7 +255,7 @@ const SendTab = () => {
             <p className="text-muted-foreground">Company: <span className="text-foreground font-medium">{prefetchedData.company.registeredCompanyName}</span></p>
           )}
           {prefetchedData.store.tradingSiteName && (
-            <p className="text-muted-foreground">Store: <span className="text-foreground font-medium">{prefetchedData.store.tradingSiteName}</span></p>
+            <p className="text-muted-foreground">Deal: <span className="text-foreground font-medium">{prefetchedData.store.tradingSiteName}</span></p>
           )}
           {prefetchedData.contacts.length > 0 && (
             <p className="text-muted-foreground">
