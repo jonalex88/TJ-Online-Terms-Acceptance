@@ -92,6 +92,10 @@ const SendTab = () => {
             ...companyResult.company,
           },
           hubspotCompanyId: companyResult.hubspotCompanyId,
+          industryOptions:
+            companyResult.industryOptions && companyResult.industryOptions.length > 0
+              ? companyResult.industryOptions
+              : hubspotData.industryOptions,
         };
       } catch (err) {
         fetchErrors.push(err instanceof Error ? err.message : "Company prefill failed");

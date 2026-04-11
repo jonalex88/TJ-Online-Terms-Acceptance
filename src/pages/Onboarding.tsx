@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, Receipt,
   PenLine, Loader2, Download, AlertCircle, Printer, Building2,
@@ -258,6 +259,10 @@ const Onboarding = () => {
   );
   const backupBankFeePerSite = 30;
   const canSubmitFees = feesAccepted;
+  const industryOptions = data.hubspotIndustryOptions ?? [];
+  const selectedIndustry = companyDraft["industry"] ?? "";
+  const selectedIndustryLabel =
+    industryOptions.find((option) => option.value === selectedIndustry)?.label ?? selectedIndustry;
   const currentRegisteredCompanyName = (data.companies[0]?.registeredCompanyName ?? "").trim();
   const canContinueCompanyDetails = REQUIRED_COMPANY_FIELDS.every(
     (field) => (companyDraft[field] ?? "").trim().length > 0
@@ -386,7 +391,25 @@ const Onboarding = () => {
                   </div>
                   <div className="space-y-1 sm:col-span-2">
                     <Label htmlFor="co-industry">Industry *</Label>
-                    <Input id="co-industry" value={companyDraft["industry"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, industry: e.target.value }))} />
+                    {industryOptions.length > 0 ? (
+                      <Select
+                        value={selectedIndustry}
+                        onValueChange={(value) => setCompanyDraft((d) => ({ ...d, industry: value }))}
+                      >
+                        <SelectTrigger id="co-industry">
+                          <SelectValue placeholder="Select industry" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {industryOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input id="co-industry" value={selectedIndustryLabel} onChange={(e) => setCompanyDraft((d) => ({ ...d, industry: e.target.value }))} />
+                    )}
                   </div>
                 </div>
               </div>

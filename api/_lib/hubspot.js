@@ -180,6 +180,26 @@ function mapCompanyFromHubSpotObject(hsCompany) {
   };
 }
 
+function normalizeIndustryOptions(propertyResponse) {
+  const options = propertyResponse?.options ?? [];
+  return options
+    .map((option) => {
+      const value = String(option?.value ?? "").trim();
+      const label = String(option?.label ?? "").trim() || value;
+      return { value, label };
+    })
+    .filter((option) => option.value.length > 0);
+}
+
+async function fetchIndustryOptions(token) {
+  try {
+    const propertyResponse = await hsGet(`/crm/v3/properties/companies/industry`, token);
+    return normalizeIndustryOptions(propertyResponse);
+  } catch {
+    return [];
+  }
+}
+
 function getHubSpotToken() {
   return process.env.HUBSPOT_ACCESS_TOKEN || process.env.VITE_HUBSPOT_ACCESS_TOKEN || "";
 }
@@ -291,6 +311,7 @@ async function hsPut(pathName, token) {
 }
 
 async function fetchDealDataServer(dealId, token) {
+  const industryOptions = await fetchIndustryOptions(token);
   const deal = await hsGet(`/crm/v3/objects/deals/${dealId}?properties=${DEAL_PROPS}`, token);
   const companyAssoc = await hsGet(`/crm/v3/objects/deals/${dealId}/associations/companies`, token);
 
@@ -348,10 +369,11 @@ async function fetchDealDataServer(dealId, token) {
     acquiringBankMid: "",
   };
 
-  return { store, company, contacts, hubspotCompanyId };
+  return { store, company, contacts, hubspotCompanyId, industryOptions };
 }
 
 async function fetchCompanyDataServer(companyId, token) {
+  const industryOptions = await fetchIndustryOptions(token);
   const hsCompany = await hsGet(
     `/crm/v3/objects/companies/${companyId}?properties=${COMPANY_PROPS}`,
     token
@@ -359,6 +381,7 @@ async function fetchCompanyDataServer(companyId, token) {
   return {
     company: mapCompanyFromHubSpotObject(hsCompany),
     hubspotCompanyId: companyId,
+    industryOptions,
   };
 }
 

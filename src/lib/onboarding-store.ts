@@ -73,6 +73,7 @@ export function createSession(
     hubspotDealId: hubspot.dealId,
     hubspotDealUrl: hubspot.dealUrl,
     hubspotCompanyId: hubspot.companyId,
+    hubspotIndustryOptions: prefill?.industryOptions ?? [],
     adminConfig,
     companies: [initialCompany],
     bulkDeal: adminConfig.bulkDeal,

@@ -31,11 +31,13 @@ export interface HubSpotFetchResult {
   company: Partial<Company>;
   contacts: Contact[];
   hubspotCompanyId: string;
+  industryOptions?: Array<{ value: string; label: string }>;
 }
 
 export interface HubSpotCompanyFetchResult {
   company: Partial<Company>;
   hubspotCompanyId: string;
+  industryOptions?: Array<{ value: string; label: string }>;
 }
 
 export async function fetchDealData(dealId: string): Promise<HubSpotFetchResult> {

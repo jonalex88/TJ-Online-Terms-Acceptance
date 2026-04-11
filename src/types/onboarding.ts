@@ -39,6 +39,11 @@ export interface Document {
   uploadedAt?: string;
 }
 
+export interface HubSpotOption {
+  value: string;
+  label: string;
+}
+
 export interface Company {
   id: string;
   hubspotId?: string;
@@ -91,6 +96,7 @@ export interface OnboardingData {
   hubspotDealId: string;
   hubspotDealUrl: string;
   hubspotCompanyId: string;
+  hubspotIndustryOptions?: HubSpotOption[];
   adminConfig: AdminConfig;
   companies: Company[];
   bulkDeal?: boolean;
