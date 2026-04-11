@@ -2,6 +2,7 @@ const HUBSPOT_BASE_URL = "https://api.hubapi.com";
 const DEAL_PROPS = ["dealname", "dealstage"].join(",");
 const COMPANY_PROPS = [
   "name",
+  "business_name",
   "legal_name",
   "registered_company_name",
   "trading_name",
@@ -9,6 +10,7 @@ const COMPANY_PROPS = [
   "trading_as",
   "tradingas",
   "registration_number",
+  "company_registration_no",
   "registration_no",
   "company_registration_number",
   "registrationnumber",
@@ -132,12 +134,14 @@ function mapCompanyFromHubSpotObject(hsCompany) {
 
   const registeredCompanyName = firstNonEmpty(
     prop(hsCompany, "name"),
+    prop(hsCompany, "business_name"),
     prop(hsCompany, "legal_name"),
     prop(hsCompany, "registered_company_name")
   );
 
   const registrationNumber = firstNonEmpty(
     prop(hsCompany, "registration_number"),
+    prop(hsCompany, "company_registration_no"),
     prop(hsCompany, "registration_no"),
     prop(hsCompany, "company_registration_number"),
     prop(hsCompany, "registrationnumber")
