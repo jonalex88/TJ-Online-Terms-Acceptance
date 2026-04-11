@@ -30,6 +30,22 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const REQUIRED_COMPANY_FIELDS = [
+  "registeredCompanyName",
+  "tradingName",
+  "registrationNumber",
+  "industry",
+  "buildingName",
+  "buildingNumber",
+  "streetNumber",
+  "streetAddress",
+  "suburb",
+  "city",
+  "province",
+  "postalCode",
+  "country",
+] as const;
+
 const Onboarding = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [data, setData] = useState<OnboardingData | null>(null);
@@ -242,11 +258,28 @@ const Onboarding = () => {
   );
   const backupBankFeePerSite = 30;
   const canSubmitFees = feesAccepted;
+  const currentRegisteredCompanyName = (data.companies[0]?.registeredCompanyName ?? "").trim();
+  const canContinueCompanyDetails = REQUIRED_COMPANY_FIELDS.every(
+    (field) => (companyDraft[field] ?? "").trim().length > 0
+  );
   const canConfirm =
     signerFullName.trim().length > 1 &&
     signerJobTitle.trim().length > 1 &&
     isValidEmail(signerEmail) &&
-    authorizedConfirmed;
+    authorizedConfirmed &&
+    currentRegisteredCompanyName.length > 0;
+
+  const handleRegisteredCompanyNameChange = (value: string) => {
+    const updatedCompanies = data.companies.map((company, idx) =>
+      idx === 0
+        ? {
+            ...company,
+            registeredCompanyName: value,
+          }
+        : company
+    );
+    persist({ ...data, companies: updatedCompanies });
+  };
 
   const handleConfirmCompany = () => {
     const updatedCompanies = data.companies.map((company, idx) =>
@@ -340,7 +373,7 @@ const Onboarding = () => {
                     <Input id="co-reg-name" value={companyDraft["registeredCompanyName"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, registeredCompanyName: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-trading-name">Trading name</Label>
+                    <Label htmlFor="co-trading-name">Trading name *</Label>
                     <Input id="co-trading-name" value={companyDraft["tradingName"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, tradingName: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
@@ -352,7 +385,7 @@ const Onboarding = () => {
                     <Input id="co-vat" value={companyDraft["vatNumber"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, vatNumber: e.target.value }))} />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <Label htmlFor="co-industry">Industry</Label>
+                    <Label htmlFor="co-industry">Industry *</Label>
                     <Input id="co-industry" value={companyDraft["industry"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, industry: e.target.value }))} />
                   </div>
                 </div>
@@ -361,39 +394,39 @@ const Onboarding = () => {
                 <p className="text-sm font-semibold">Physical Address</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <Label htmlFor="co-building-name">Building name</Label>
+                    <Label htmlFor="co-building-name">Building name *</Label>
                     <Input id="co-building-name" value={companyDraft["buildingName"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, buildingName: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-building-number">Building number</Label>
+                    <Label htmlFor="co-building-number">Building number *</Label>
                     <Input id="co-building-number" value={companyDraft["buildingNumber"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, buildingNumber: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-street-number">Street number</Label>
+                    <Label htmlFor="co-street-number">Street number *</Label>
                     <Input id="co-street-number" value={companyDraft["streetNumber"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, streetNumber: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-street">Street address</Label>
+                    <Label htmlFor="co-street">Street address *</Label>
                     <Input id="co-street" value={companyDraft["streetAddress"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, streetAddress: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-suburb">Suburb</Label>
+                    <Label htmlFor="co-suburb">Suburb *</Label>
                     <Input id="co-suburb" value={companyDraft["suburb"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, suburb: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-city">City</Label>
+                    <Label htmlFor="co-city">City *</Label>
                     <Input id="co-city" value={companyDraft["city"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, city: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-province">Province</Label>
+                    <Label htmlFor="co-province">Province *</Label>
                     <Input id="co-province" value={companyDraft["province"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, province: e.target.value }))} />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="co-postal">Postal code</Label>
+                    <Label htmlFor="co-postal">Postal code *</Label>
                     <Input id="co-postal" value={companyDraft["postalCode"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, postalCode: e.target.value }))} />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <Label htmlFor="co-country">Country</Label>
+                    <Label htmlFor="co-country">Country *</Label>
                     <Input id="co-country" value={companyDraft["country"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, country: e.target.value }))} />
                   </div>
                 </div>
@@ -404,7 +437,7 @@ const Onboarding = () => {
             <Button
               onClick={handleConfirmCompany}
               size="lg"
-              disabled={!(companyDraft["registeredCompanyName"] ?? "").trim() || !(companyDraft["registrationNumber"] ?? "").trim()}
+              disabled={!canContinueCompanyDetails}
             >
               Continue to Terms <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -654,10 +687,12 @@ const Onboarding = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Company</Label>
+                  <Label htmlFor="registered-company-name">Registered Company Name *</Label>
                   <Input
-                    value={data.companies[0]?.registeredCompanyName || data.companies[0]?.tradingName || "Unknown Company"}
-                    disabled
+                    id="registered-company-name"
+                    value={data.companies[0]?.registeredCompanyName ?? ""}
+                    onChange={(e) => handleRegisteredCompanyNameChange(e.target.value)}
+                    placeholder="Registered company name"
                   />
                 </div>
               </div>
@@ -701,7 +736,7 @@ const Onboarding = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating & attaching PDF...
+                  Generating signed PDF...
                 </>
               ) : (
                 <>

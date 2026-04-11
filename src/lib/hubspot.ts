@@ -35,6 +35,12 @@ export interface HubSpotFetchResult {
 
 export async function fetchDealData(dealId: string): Promise<HubSpotFetchResult> {
   const res = await fetch(`/api/hubspot/deals/${dealId}`);
+  const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+
+  if (res.ok && !contentType.includes("application/json")) {
+    throw new Error("HubSpot endpoint returned HTML instead of JSON. Please redeploy so API routing is applied.");
+  }
+
   if (!res.ok) {
     let message = `HubSpot proxy error (${res.status})`;
     try {
