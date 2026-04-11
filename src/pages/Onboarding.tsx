@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, Receipt,
-  PenLine, Loader2, Download, AlertCircle, Printer,
+  PenLine, Loader2, Download, AlertCircle, Printer, Building2,
 } from "lucide-react";
 import { termsOfUseCopy, isTermsHeading } from "@/lib/terms-content";
 import { generateAcceptancePdf, blobToBase64, SignerInfo } from "@/lib/generate-pdf";
@@ -41,6 +41,7 @@ const Onboarding = () => {
   const [authorizedConfirmed, setAuthorizedConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [companyDraft, setCompanyDraft] = useState<Record<string, string>>({});
   const pdfBlobRef = useRef<Blob | null>(null);
 
   useEffect(() => {
@@ -56,6 +57,25 @@ const Onboarding = () => {
         setSignerJobTitle(session.signer?.jobTitle ?? "");
         setSignerEmail(session.acceptanceEmail ?? "");
         setAuthorizedConfirmed(session.signer?.authorizedConfirmed ?? false);
+        const c = session.companies[0];
+        if (c) {
+          setCompanyDraft({
+            registeredCompanyName: c.registeredCompanyName ?? "",
+            registrationNumber: c.registrationNumber ?? "",
+            vatNumber: c.vatNumber ?? "",
+            tradingName: c.tradingName ?? "",
+            industry: c.industry ?? "",
+            buildingName: c.buildingName ?? "",
+            buildingNumber: c.buildingNumber ?? "",
+            streetNumber: c.streetNumber ?? "",
+            streetAddress: c.streetAddress ?? "",
+            suburb: c.suburb ?? "",
+            city: c.city ?? "",
+            province: c.province ?? "",
+            postalCode: c.postalCode ?? "",
+            country: c.country ?? "",
+          });
+        }
 
         if (migratedStep !== session.currentStep) {
           saveSession(migratedSession);
@@ -83,6 +103,11 @@ const Onboarding = () => {
   }
 
   const currentStep = data.currentStep;
+  const hasCompanyStep = !!data.adminConfig.hubspotCompanyUrl;
+  const STEP_TERMS = hasCompanyStep ? 1 : 0;
+  const STEP_FEES = hasCompanyStep ? 2 : 1;
+  const STEP_CONFIRM = hasCompanyStep ? 3 : 2;
+  const STEP_SUCCESS = hasCompanyStep ? 4 : 3;
 
   const goTo = (step: number) => {
     persist({ ...data, currentStep: step });
@@ -99,7 +124,7 @@ const Onboarding = () => {
   };
 
   const handleSubmitApplication = () => {
-    persist({ ...data, feesAccepted: true, currentStep: 2 });
+    persist({ ...data, feesAccepted: true, currentStep: STEP_CONFIRM });
   };
 
   const handleFinalConfirm = async () => {
@@ -166,7 +191,7 @@ const Onboarding = () => {
           authorizedConfirmed: true,
         },
         acceptanceCertificateUrl: body.fileUrl ?? data.acceptanceCertificateUrl,
-        currentStep: 3,
+        currentStep: STEP_SUCCESS,
         updatedAt: new Date().toISOString(),
       });
     } catch (error) {
@@ -217,7 +242,32 @@ const Onboarding = () => {
     isValidEmail(signerEmail) &&
     authorizedConfirmed;
 
-  if (currentStep >= 3) {
+  const handleConfirmCompany = () => {
+    const updatedCompanies = data.companies.map((company, idx) =>
+      idx === 0
+        ? {
+            ...company,
+            registeredCompanyName: companyDraft["registeredCompanyName"] ?? company.registeredCompanyName,
+            registrationNumber: companyDraft["registrationNumber"] ?? company.registrationNumber,
+            vatNumber: companyDraft["vatNumber"] ?? company.vatNumber,
+            tradingName: companyDraft["tradingName"] ?? company.tradingName,
+            industry: companyDraft["industry"] ?? company.industry,
+            buildingName: companyDraft["buildingName"] ?? company.buildingName,
+            buildingNumber: companyDraft["buildingNumber"] ?? company.buildingNumber,
+            streetNumber: companyDraft["streetNumber"] ?? company.streetNumber,
+            streetAddress: companyDraft["streetAddress"] ?? company.streetAddress,
+            suburb: companyDraft["suburb"] ?? company.suburb,
+            city: companyDraft["city"] ?? company.city,
+            province: companyDraft["province"] ?? company.province,
+            postalCode: companyDraft["postalCode"] ?? company.postalCode,
+            country: companyDraft["country"] ?? company.country,
+          }
+        : company
+    );
+    persist({ ...data, companies: updatedCompanies, currentStep: STEP_TERMS });
+  };
+
+  if (currentStep >= STEP_SUCCESS) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-lg w-full shadow-lg text-center">
@@ -259,8 +309,105 @@ const Onboarding = () => {
   }
 
   return (
-    <WizardLayout currentStep={currentStep}>
-      {currentStep === 0 && (
+    <WizardLayout currentStep={currentStep} hasCompanyStep={hasCompanyStep}>
+      {hasCompanyStep && currentStep === 0 && (
+        <div className="space-y-6 max-w-3xl mx-auto">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Building2 className="h-5 w-5 text-primary" />
+                </div>
+                <CardTitle>Confirm Company Details</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert>
+                <AlertDescription>
+                  Please review and update your company details below. Fields have been pre-populated from your HubSpot record where available.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-4">
+                <p className="text-sm font-semibold">Company Identity</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="co-reg-name">Registered company name *</Label>
+                    <Input id="co-reg-name" value={companyDraft["registeredCompanyName"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, registeredCompanyName: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-trading-name">Trading name</Label>
+                    <Input id="co-trading-name" value={companyDraft["tradingName"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, tradingName: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-reg-number">Registration number *</Label>
+                    <Input id="co-reg-number" value={companyDraft["registrationNumber"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, registrationNumber: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-vat">VAT number</Label>
+                    <Input id="co-vat" value={companyDraft["vatNumber"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, vatNumber: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label htmlFor="co-industry">Industry</Label>
+                    <Input id="co-industry" value={companyDraft["industry"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, industry: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t pt-4 space-y-4">
+                <p className="text-sm font-semibold">Physical Address</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="co-building-name">Building name</Label>
+                    <Input id="co-building-name" value={companyDraft["buildingName"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, buildingName: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-building-number">Building number</Label>
+                    <Input id="co-building-number" value={companyDraft["buildingNumber"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, buildingNumber: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-street-number">Street number</Label>
+                    <Input id="co-street-number" value={companyDraft["streetNumber"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, streetNumber: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-street">Street address</Label>
+                    <Input id="co-street" value={companyDraft["streetAddress"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, streetAddress: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-suburb">Suburb</Label>
+                    <Input id="co-suburb" value={companyDraft["suburb"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, suburb: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-city">City</Label>
+                    <Input id="co-city" value={companyDraft["city"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, city: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-province">Province</Label>
+                    <Input id="co-province" value={companyDraft["province"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, province: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="co-postal">Postal code</Label>
+                    <Input id="co-postal" value={companyDraft["postalCode"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, postalCode: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label htmlFor="co-country">Country</Label>
+                    <Input id="co-country" value={companyDraft["country"] ?? ""} onChange={(e) => setCompanyDraft((d) => ({ ...d, country: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <div className="flex justify-end pt-4">
+            <Button
+              onClick={handleConfirmCompany}
+              size="lg"
+              disabled={!(companyDraft["registeredCompanyName"] ?? "").trim() || !(companyDraft["registrationNumber"] ?? "").trim()}
+            >
+              Continue to Terms <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {currentStep === STEP_TERMS && (
         <div className="space-y-6 max-w-5xl mx-auto">
           <Card>
             <CardHeader>
@@ -300,14 +447,14 @@ const Onboarding = () => {
             <Button variant="outline" onClick={handlePrint} size="lg">
               <Printer className="mr-2 h-4 w-4" /> Print
             </Button>
-            <Button onClick={() => goTo(1)} size="lg" disabled={!termsAccepted}>
+            <Button onClick={() => goTo(STEP_FEES)} size="lg" disabled={!termsAccepted}>
               Next: Fees <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
       )}
 
-      {currentStep === 1 && (
+      {currentStep === STEP_FEES && (
         <div className="space-y-6 max-w-6xl mx-auto">
           <Card>
             <CardHeader>
@@ -414,7 +561,7 @@ const Onboarding = () => {
 
           <div className="flex justify-between pt-4">
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => goTo(0)} size="lg">
+              <Button variant="outline" onClick={() => goTo(STEP_TERMS)} size="lg">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
               </Button>
               <Button variant="outline" onClick={handlePrint} size="lg">
@@ -428,7 +575,7 @@ const Onboarding = () => {
         </div>
       )}
 
-      {currentStep === 2 && (
+      {currentStep === STEP_CONFIRM && (
         <div className="space-y-6 max-w-3xl mx-auto">
           <Card>
             <CardHeader>
@@ -542,7 +689,7 @@ const Onboarding = () => {
           </Card>
 
           <div className="flex justify-between pt-4">
-            <Button variant="outline" onClick={() => goTo(1)} size="lg" disabled={isSubmitting}>
+            <Button variant="outline" onClick={() => goTo(STEP_FEES)} size="lg" disabled={isSubmitting}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
             <Button onClick={handleFinalConfirm} size="lg" disabled={!canConfirm || isSubmitting}>

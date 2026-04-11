@@ -7,18 +7,25 @@ interface Step {
   description: string;
 }
 
-const STEPS: Step[] = [
+const DEFAULT_STEPS: Step[] = [
   { label: "Terms of Use", description: "Review and accept terms" },
   { label: "Fees", description: "Review and accept fees" },
   { label: "Confirmation", description: "Authorise and sign" },
 ];
 
+const COMPANY_STEPS: Step[] = [
+  { label: "Company Details", description: "Confirm your details" },
+  ...DEFAULT_STEPS,
+];
+
 interface WizardLayoutProps {
   currentStep: number;
+  hasCompanyStep?: boolean;
   children: ReactNode;
 }
 
-const WizardLayout = ({ currentStep, children }: WizardLayoutProps) => {
+const WizardLayout = ({ currentStep, hasCompanyStep = false, children }: WizardLayoutProps) => {
+  const STEPS = hasCompanyStep ? COMPANY_STEPS : DEFAULT_STEPS;
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md flex items-center gap-4">

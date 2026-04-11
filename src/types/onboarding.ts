@@ -63,6 +63,7 @@ export interface Company {
 
 export interface AdminConfig {
   hubspotDealUrl: string;
+  hubspotCompanyUrl?: string;
   bulkDeal: boolean;
   products: {
     inPersonPayments: boolean;

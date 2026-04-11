@@ -15,6 +15,7 @@ function generateSessionToken(): string {
 
 export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
   hubspotDealUrl: "",
+  hubspotCompanyUrl: "",
   bulkDeal: false,
   products: { inPersonPayments: true, reconPro: true },
   agreementType: "accept-terms",

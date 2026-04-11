@@ -11,7 +11,16 @@ export function extractDealId(dealUrl: string): string | null {
   const match = dealUrl.match(/\/(?:deals?|record\/0-3)\/([\d]+)/i);
   return match ? match[1] : null;
 }
-
+/**
+ * Extracts the numeric company ID from a HubSpot company URL.
+ * Supports formats like:
+ *   https://app-eu1.hubspot.com/contacts/12345/company/67890
+ *   https://app-eu1.hubspot.com/contacts/12345/record/0-2/67890
+ */
+export function extractCompanyId(companyUrl: string): string | null {
+  const match = companyUrl.match(/\/(?:company|record\/0-2)\/(\d+)/i);
+  return match ? match[1] : null;
+}
 interface HsObject {
   id: string;
   properties: Record<string, string | null>;

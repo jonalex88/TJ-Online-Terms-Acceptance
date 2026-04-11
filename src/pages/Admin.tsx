@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createSession, DEFAULT_ADMIN_CONFIG, listAllSessions, markSubmitted } from "@/lib/onboarding-store";
-import { extractDealId, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot";
+  import { extractDealId, extractCompanyId, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot";
 import { AdminConfig, OnboardingData } from "@/types/onboarding";
 import {
   Copy, CheckCircle, Link as LinkIcon, ExternalLink, Loader2, AlertCircle, Building2,
@@ -31,6 +31,7 @@ const formatDate = (iso: string) =>
 // ---------------------------------------------------------------------------
 const SendTab = () => {
   const [dealUrl, setDealUrl] = useState("");
+  const [companyUrl, setCompanyUrl] = useState("");
   const [config, setConfig] = useState<AdminConfig>({ ...DEFAULT_ADMIN_CONFIG });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,6 +40,7 @@ const SendTab = () => {
   const [copied, setCopied] = useState(false);
 
   const dealId = extractDealId(dealUrl.trim());
+  const companyId = companyUrl.trim() ? extractCompanyId(companyUrl.trim()) : null;
 
   const handleGenerate = async () => {
     const trimmedUrl = dealUrl.trim();
@@ -64,7 +66,7 @@ const SendTab = () => {
     } finally {
       setLoading(false);
     }
-    const updatedConfig: AdminConfig = { ...config, hubspotDealUrl: trimmedUrl };
+    const updatedConfig: AdminConfig = { ...config, hubspotDealUrl: trimmedUrl, hubspotCompanyUrl: companyUrl.trim() };
     setConfig(updatedConfig);
     const sessionId = createSession(
       updatedConfig,
@@ -102,6 +104,25 @@ const SendTab = () => {
         )}
         {dealUrl && dealId && (
           <p className="text-xs text-muted-foreground">Deal ID detected: <span className="font-mono">{dealId}</span></p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="company-url" className="font-medium">HubSpot Company URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
+        <Input
+          id="company-url"
+          placeholder="https://app-eu1.hubspot.com/contacts/12345/company/67890"
+          value={companyUrl}
+          onChange={(e) => { setCompanyUrl(e.target.value); setGeneratedLink(""); }}
+        />
+        {companyUrl.trim() && !companyId && (
+          <p className="text-xs text-destructive">Please enter a valid HubSpot company URL containing a company ID.</p>
+        )}
+        {companyUrl.trim() && companyId && (
+          <p className="text-xs text-muted-foreground">Company ID detected: <span className="font-mono">{companyId}</span> — wizard will include a company details confirmation step.</p>
+        )}
+        {!companyUrl.trim() && (
+          <p className="text-xs text-muted-foreground">If provided, the wizard will include a step for the customer to confirm their company details.</p>
         )}
       </div>
 
