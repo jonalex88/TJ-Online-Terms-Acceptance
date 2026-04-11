@@ -274,18 +274,31 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
       const pdfBase64 = await blobToBase64(pdfBlob);
       const fileName = `tj-terms-acceptance-${session.hubspotDealId}-${Date.now()}.pdf`;
 
-      const submitRes = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hubspotDealId: session.hubspotDealId,
-          companies: session.companies,
-        }),
-      });
+      const shouldCommitCompanyDetails = Boolean(session.adminConfig.hubspotCompanyUrl?.trim());
+      const submitWarnings: string[] = [];
 
-      const submitBody = await submitRes.json().catch(() => ({})) as { error?: string; errors?: string[]; updated?: string[]; created?: string[] };
-      if (!submitRes.ok) {
-        throw new Error(submitBody.error ?? `Failed to update company/contact details (HTTP ${submitRes.status})`);
+      if (shouldCommitCompanyDetails) {
+        // Only commit company fields; contacts are intentionally excluded from this workflow.
+        const companiesForCommit = session.companies.map((company) => ({
+          ...company,
+          contacts: [],
+        }));
+
+        const submitRes = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            hubspotDealId: session.hubspotDealId,
+            companies: companiesForCommit,
+          }),
+        });
+
+        const submitBody = await submitRes.json().catch(() => ({})) as { error?: string; errors?: string[]; updated?: string[]; created?: string[] };
+        if (!submitRes.ok) {
+          throw new Error(submitBody.error ?? `Failed to update company details (HTTP ${submitRes.status})`);
+        }
+
+        submitWarnings.push(...(submitBody.errors ?? []));
       }
 
       const attachRes = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/attach-pdf`, {
@@ -309,7 +322,7 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
       markSubmitted(session.sessionId, { acceptanceCertificateUrl: attachBody.fileUrl });
       setSubmitted(true);
 
-      const warnings = [...(submitBody.errors ?? []), ...(attachBody.warnings ?? [])];
+      const warnings = [...submitWarnings, ...(attachBody.warnings ?? [])];
       if (warnings.length > 0) {
         setSubmitError(`Committed with warnings:\n${warnings.join("\n")}`);
       }
