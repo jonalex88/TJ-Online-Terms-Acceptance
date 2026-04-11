@@ -2,16 +2,47 @@ const HUBSPOT_BASE_URL = "https://api.hubapi.com";
 const DEAL_PROPS = ["dealname", "dealstage"].join(",");
 const COMPANY_PROPS = [
   "name",
+  "legal_name",
+  "registered_company_name",
   "trading_name",
+  "trading_name__c",
+  "trading_as",
+  "tradingas",
   "registration_number",
+  "registration_no",
+  "company_registration_number",
+  "registrationnumber",
   "vat_number",
+  "vat_no",
+  "vat_registration_number",
+  "vatnumber",
   "industry",
+  "sic_code",
   "address",
   "address2",
+  "street_address",
+  "address_line_1",
+  "address_line_2",
+  "street",
+  "suburb",
+  "district",
+  "county",
+  "building_name",
+  "buildingnumber",
+  "building_number",
+  "street_number",
+  "unit_number",
   "city",
   "state",
+  "province",
+  "state_province",
+  "region",
   "zip",
+  "postal_code",
+  "postcode",
+  "zipcode",
   "country",
+  "country_code",
 ].join(",");
 const CONTACT_PROPS = [
   "firstname",
@@ -38,6 +69,103 @@ function writeJson(res, statusCode, body) {
 
 function prop(obj, key) {
   return obj?.properties?.[key] ?? "";
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    const normalized = String(value ?? "").trim();
+    if (normalized) return normalized;
+  }
+  return "";
+}
+
+function mapCompanyFromHubSpotObject(hsCompany) {
+  const buildingName = firstNonEmpty(prop(hsCompany, "building_name"));
+  const buildingNumber = firstNonEmpty(
+    prop(hsCompany, "building_number"),
+    prop(hsCompany, "buildingnumber")
+  );
+  const streetNumber = firstNonEmpty(
+    prop(hsCompany, "street_number"),
+    prop(hsCompany, "unit_number")
+  );
+
+  const rawAddress = [
+    prop(hsCompany, "address"),
+    prop(hsCompany, "address2"),
+    prop(hsCompany, "street_address"),
+    prop(hsCompany, "address_line_1"),
+    prop(hsCompany, "address_line_2"),
+    prop(hsCompany, "street"),
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const industry = firstNonEmpty(prop(hsCompany, "industry"), prop(hsCompany, "sic_code"));
+  const city = firstNonEmpty(prop(hsCompany, "city"));
+  const suburb = firstNonEmpty(
+    prop(hsCompany, "suburb"),
+    prop(hsCompany, "district"),
+    prop(hsCompany, "county")
+  );
+  const province = firstNonEmpty(
+    prop(hsCompany, "state"),
+    prop(hsCompany, "province"),
+    prop(hsCompany, "state_province"),
+    prop(hsCompany, "region")
+  );
+  const postalCode = firstNonEmpty(
+    prop(hsCompany, "zip"),
+    prop(hsCompany, "postal_code"),
+    prop(hsCompany, "postcode"),
+    prop(hsCompany, "zipcode")
+  );
+  const country = firstNonEmpty(prop(hsCompany, "country"), prop(hsCompany, "country_code"));
+
+  const tradingName = firstNonEmpty(
+    prop(hsCompany, "trading_name"),
+    prop(hsCompany, "trading_name__c"),
+    prop(hsCompany, "trading_as"),
+    prop(hsCompany, "tradingas"),
+    prop(hsCompany, "name")
+  );
+
+  const registeredCompanyName = firstNonEmpty(
+    prop(hsCompany, "name"),
+    prop(hsCompany, "legal_name"),
+    prop(hsCompany, "registered_company_name")
+  );
+
+  const registrationNumber = firstNonEmpty(
+    prop(hsCompany, "registration_number"),
+    prop(hsCompany, "registration_no"),
+    prop(hsCompany, "company_registration_number"),
+    prop(hsCompany, "registrationnumber")
+  );
+
+  const vatNumber = firstNonEmpty(
+    prop(hsCompany, "vat_number"),
+    prop(hsCompany, "vat_no"),
+    prop(hsCompany, "vat_registration_number"),
+    prop(hsCompany, "vatnumber")
+  );
+
+  return {
+    registeredCompanyName,
+    tradingName,
+    registrationNumber,
+    vatNumber,
+    industry,
+    buildingName,
+    buildingNumber,
+    streetNumber,
+    streetAddress: rawAddress,
+    suburb,
+    city,
+    province,
+    postalCode,
+    country,
+  };
 }
 
 function getHubSpotToken() {
@@ -164,27 +292,7 @@ async function fetchDealDataServer(dealId, token) {
       `/crm/v3/objects/companies/${hubspotCompanyId}?properties=${COMPANY_PROPS}`,
       token
     );
-
-    const rawAddress = [prop(hsCompany, "address"), prop(hsCompany, "address2")]
-      .filter(Boolean)
-      .join(", ");
-
-    company = {
-      registeredCompanyName: prop(hsCompany, "name"),
-      tradingName: prop(hsCompany, "trading_name") || prop(hsCompany, "name"),
-      registrationNumber: prop(hsCompany, "registration_number"),
-      vatNumber: prop(hsCompany, "vat_number"),
-      industry: prop(hsCompany, "industry"),
-      buildingName: "",
-      buildingNumber: "",
-      streetNumber: "",
-      streetAddress: rawAddress,
-      suburb: "",
-      city: prop(hsCompany, "city"),
-      province: prop(hsCompany, "state"),
-      postalCode: prop(hsCompany, "zip"),
-      country: prop(hsCompany, "country"),
-    };
+    company = mapCompanyFromHubSpotObject(hsCompany);
 
     const contactAssoc = await hsGet(
       `/crm/v3/objects/companies/${hubspotCompanyId}/associations/contacts`,
@@ -229,6 +337,17 @@ async function fetchDealDataServer(dealId, token) {
   };
 
   return { store, company, contacts, hubspotCompanyId };
+}
+
+async function fetchCompanyDataServer(companyId, token) {
+  const hsCompany = await hsGet(
+    `/crm/v3/objects/companies/${companyId}?properties=${COMPANY_PROPS}`,
+    token
+  );
+  return {
+    company: mapCompanyFromHubSpotObject(hsCompany),
+    hubspotCompanyId: companyId,
+  };
 }
 
 async function submitOnboardingServer(dealId, body, token) {
@@ -444,6 +563,12 @@ function getDealIdFromQuery(req) {
   return String(raw || "");
 }
 
+function getCompanyIdFromQuery(req) {
+  const raw = req.query?.companyId;
+  if (Array.isArray(raw)) return raw[0] || "";
+  return String(raw || "");
+}
+
 export {
   writeJson,
   getHubSpotToken,
@@ -451,7 +576,9 @@ export {
   isJsonRequest,
   readJsonBody,
   fetchDealDataServer,
+  fetchCompanyDataServer,
   submitOnboardingServer,
   attachSignedPdfServer,
   getDealIdFromQuery,
+  getCompanyIdFromQuery,
 };
