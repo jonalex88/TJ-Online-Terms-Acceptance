@@ -15,8 +15,23 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "src": "/api/hubspot/deal",
+      "dest": "/api/hubspot/deal.js"
+    },
+    {
+      "src": "/api/hubspot/company",
+      "dest": "/api/hubspot/company.js"
+    },
+    {
+      "src": "/api/hubspot/submit",
+      "dest": "/api/hubspot/submit.js"
+    },
+    {
+      "src": "/api/hubspot/attach-pdf",
+      "dest": "/api/hubspot/attach-pdf.js"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
