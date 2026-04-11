@@ -23,6 +23,8 @@ export const DEFAULT_ADMIN_CONFIG: AdminConfig = {
     monthlyCloudHostingFeePerDevice: 25,
     monthlyReconProFeePerSite: 295,
     oneOffSetupFeePerSite: 520,
+    includePosIntegrationFee: true,
+    posIntegrationFee: 45000,
   },
 };
 

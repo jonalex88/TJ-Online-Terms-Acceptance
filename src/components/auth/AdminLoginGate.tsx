@@ -100,8 +100,12 @@ const AdminLoginGate = ({ children }: AdminLoginGateProps) => {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-2xl shadow-lg">
         <CardHeader>
-          <img src={tjLogo} alt="Transaction Junction" className="h-8 w-auto" />
-          <CardTitle className="text-2xl mt-2">Admin sign in</CardTitle>
+          <img
+            src={tjLogo}
+            alt="Transaction Junction"
+            className="h-12 w-full max-w-[320px] object-contain object-left"
+          />
+          <CardTitle className="text-2xl mt-2">Sales sign in</CardTitle>
           <CardDescription>
             Select your user and enter your password to access the send page.
           </CardDescription>

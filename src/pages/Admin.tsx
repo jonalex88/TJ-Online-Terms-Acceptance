@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -123,6 +124,39 @@ const SendTab = () => {
             <Label htmlFor="fee-setup" className="text-xs text-muted-foreground">Config fee</Label>
             <Input id="fee-setup" type="number" className="w-32" value={config.fees.oneOffSetupFeePerSite} onChange={(e) => updateFee("oneOffSetupFeePerSite", e.target.value)} />
           </div>
+        </div>
+
+        <div className="pt-2 space-y-2">
+          <div className="flex items-start gap-3 rounded-lg border p-3">
+            <Checkbox
+              id="include-pos-integration-fee"
+              checked={config.fees.includePosIntegrationFee}
+              onCheckedChange={(checked) =>
+                setConfig((prev) => ({
+                  ...prev,
+                  fees: { ...prev.fees, includePosIntegrationFee: Boolean(checked) },
+                }))
+              }
+            />
+            <Label htmlFor="include-pos-integration-fee" className="cursor-pointer">
+              Add POS integration fee
+            </Label>
+          </div>
+
+          {config.fees.includePosIntegrationFee && (
+            <div className="space-y-1">
+              <Label htmlFor="fee-pos-integration" className="text-xs text-muted-foreground">
+                POS integration fee
+              </Label>
+              <Input
+                id="fee-pos-integration"
+                type="number"
+                className="w-40"
+                value={config.fees.posIntegrationFee}
+                onChange={(e) => updateFee("posIntegrationFee", e.target.value)}
+              />
+            </div>
+          )}
         </div>
       </div>
 

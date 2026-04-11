@@ -46,6 +46,8 @@ export async function generateAcceptancePdf(
 ): Promise<Blob> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const fees = data.adminConfig.fees;
+  const includePosIntegrationFee = fees.includePosIntegrationFee ?? true;
+  const posIntegrationFee = fees.posIntegrationFee ?? 45000;
   const backupBankFee = 30;
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 15;
@@ -195,11 +197,13 @@ export async function generateAcceptancePdf(
         "Configuration and project management fee",
         fmtCurrency(fees.oneOffSetupFeePerSite),
       ],
-      [
-        "POS integration support",
-        "Integration specialist support and certification before go-live.",
-        "R45,000.00",
-      ],
+      ...(includePosIntegrationFee
+        ? [[
+            "POS integration support",
+            "Integration specialist support and certification before go-live.",
+            fmtCurrency(posIntegrationFee),
+          ]]
+        : []),
     ],
   });
 

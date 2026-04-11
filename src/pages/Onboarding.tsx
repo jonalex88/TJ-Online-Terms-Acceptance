@@ -202,6 +202,8 @@ const Onboarding = () => {
   const cloudFee = formatCurrency(data.adminConfig.fees.monthlyCloudHostingFeePerDevice);
   const reconProFee = formatCurrency(data.adminConfig.fees.monthlyReconProFeePerSite);
   const configFee = formatCurrency(data.adminConfig.fees.oneOffSetupFeePerSite);
+  const includePosIntegrationFee = data.adminConfig.fees.includePosIntegrationFee ?? true;
+  const posIntegrationFee = formatCurrency(data.adminConfig.fees.posIntegrationFee ?? 45000);
   const totalStores = data.companies.reduce((sum, company) => sum + company.stores.length, 0);
   const totalDevices = data.companies.reduce(
     (sum, company) => sum + company.stores.reduce((storeSum, store) => storeSum + store.counterDevices + store.mobileDevices, 0),
@@ -346,13 +348,15 @@ const Onboarding = () => {
                         <td className="p-3 text-muted-foreground">Configuration and project management fee</td>
                         <td className="p-3">{configFee}</td>
                       </tr>
-                      <tr className="border-t align-top">
-                        <td className="p-3 font-medium">POS integration support</td>
-                        <td className="p-3 text-muted-foreground">
-                          Integration specialist support and certification before go-live.
-                        </td>
-                        <td className="p-3">R45,000.00</td>
-                      </tr>
+                      {includePosIntegrationFee && (
+                        <tr className="border-t align-top">
+                          <td className="p-3 font-medium">POS integration support</td>
+                          <td className="p-3 text-muted-foreground">
+                            Integration specialist support and certification before go-live.
+                          </td>
+                          <td className="p-3">{posIntegrationFee}</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

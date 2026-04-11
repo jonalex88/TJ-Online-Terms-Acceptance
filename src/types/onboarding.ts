@@ -74,6 +74,8 @@ export interface AdminConfig {
     monthlyCloudHostingFeePerDevice: number;
     monthlyReconProFeePerSite: number;
     oneOffSetupFeePerSite: number;
+    includePosIntegrationFee: boolean;
+    posIntegrationFee: number;
   };
 }
 
