@@ -23,10 +23,12 @@ const COMPANY_PROPS = [
   "sic_code",
   "address",
   "address2",
+  "address__form_submission_",
   "street_address",
   "address_line_1",
   "address_line_2",
   "street",
+  "street_name",
   "suburb",
   "district",
   "county",
@@ -38,6 +40,7 @@ const COMPANY_PROPS = [
   "city",
   "state",
   "province",
+  "sto_province",
   "state_province",
   "region",
   "zip",
@@ -96,10 +99,12 @@ function mapCompanyFromHubSpotObject(hsCompany) {
   const rawAddress = [
     prop(hsCompany, "address"),
     prop(hsCompany, "address2"),
+    prop(hsCompany, "address__form_submission_"),
     prop(hsCompany, "street_address"),
     prop(hsCompany, "address_line_1"),
     prop(hsCompany, "address_line_2"),
     prop(hsCompany, "street"),
+    prop(hsCompany, "street_name"),
   ]
     .filter(Boolean)
     .join(", ");
@@ -114,6 +119,7 @@ function mapCompanyFromHubSpotObject(hsCompany) {
   const province = firstNonEmpty(
     prop(hsCompany, "state"),
     prop(hsCompany, "province"),
+    prop(hsCompany, "sto_province"),
     prop(hsCompany, "state_province"),
     prop(hsCompany, "region")
   );
