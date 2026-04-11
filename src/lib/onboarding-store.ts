@@ -128,11 +128,17 @@ export function listAllSessions(): OnboardingData[] {
   return sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
-export function markSubmitted(sessionId: string): void {
+export function markSubmitted(
+  sessionId: string,
+  options?: { acceptanceCertificateUrl?: string }
+): void {
   const data = getSession(sessionId);
   if (!data) return;
   data.submittedToHubspot = true;
   data.submittedAt = new Date().toISOString();
+  if (options?.acceptanceCertificateUrl) {
+    data.acceptanceCertificateUrl = options.acceptanceCertificateUrl;
+  }
   saveSession(data);
 }
 

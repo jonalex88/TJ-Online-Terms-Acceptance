@@ -97,6 +97,7 @@ export interface OnboardingData {
   termsAccepted: boolean;
   feesAccepted: boolean;
   acceptanceEmail: string;
+  acceptedAt?: string;
   signer?: Signer;
   acceptanceCertificateUrl?: string;
   currentStep: number;

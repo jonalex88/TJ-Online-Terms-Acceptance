@@ -14,7 +14,7 @@ import {
   PenLine, Loader2, Download, AlertCircle, Printer, Building2,
 } from "lucide-react";
 import { termsOfUseCopy, isTermsHeading } from "@/lib/terms-content";
-import { generateAcceptancePdf, blobToBase64, SignerInfo } from "@/lib/generate-pdf";
+import { generateAcceptancePdf, SignerInfo } from "@/lib/generate-pdf";
 
 
 function formatCurrency(value: number): string {
@@ -159,49 +159,29 @@ const Onboarding = () => {
 
       const pdfBlob = await generateAcceptancePdf(data, signer);
       pdfBlobRef.current = pdfBlob;
-      const pdfBase64 = await blobToBase64(pdfBlob);
-      const fileName = `tj-terms-acceptance-${data.hubspotDealId}-${Date.now()}.pdf`;
-
-      const response = await fetch(`/api/hubspot/deals/${data.hubspotDealId}/attach-pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pdfBase64,
-          fileName,
-          signerName: signer.fullName,
-          signerTitle: signer.jobTitle,
-          signerEmail: signer.email,
-          acceptedAt,
-        }),
-      });
-
-      const body = (await response.json().catch(() => ({}))) as { error?: string; fileUrl?: string };
-      if (!response.ok) {
-        throw new Error(body.error ?? `Failed to attach signed agreement (HTTP ${response.status})`);
-      }
 
       persist({
         ...data,
         termsAccepted: true,
         feesAccepted: true,
         acceptanceEmail: signer.email,
+        acceptedAt,
         signer: {
           fullName: signer.fullName,
           jobTitle: signer.jobTitle,
           authorizedConfirmed: true,
         },
-        acceptanceCertificateUrl: body.fileUrl ?? data.acceptanceCertificateUrl,
         currentStep: STEP_SUCCESS,
         updatedAt: new Date().toISOString(),
       });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Failed to generate and submit signed agreement.");
+      setSubmitError(error instanceof Error ? error.message : "Failed to generate your signed agreement.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (pdfBlobRef.current) {
       const url = URL.createObjectURL(pdfBlobRef.current);
       const link = document.createElement("a");
@@ -214,9 +194,35 @@ const Onboarding = () => {
       return;
     }
 
-    if (data.acceptanceCertificateUrl) {
-      window.open(data.acceptanceCertificateUrl, "_blank", "noopener,noreferrer");
+    if (!data.signer || !data.acceptedAt) {
+      return;
     }
+
+    const companyName =
+      data.companies[0]?.registeredCompanyName ||
+      data.companies[0]?.tradingName ||
+      "Unknown Company";
+
+    const signer: SignerInfo = {
+      fullName: data.signer.fullName,
+      jobTitle: data.signer.jobTitle,
+      companyName,
+      email: data.acceptanceEmail,
+      acceptedAt: data.acceptedAt,
+      sessionId: data.sessionId,
+      dealId: data.hubspotDealId,
+    };
+
+    const regeneratedBlob = await generateAcceptancePdf(data, signer);
+    pdfBlobRef.current = regeneratedBlob;
+    const url = URL.createObjectURL(regeneratedBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `tj-terms-acceptance-${data.hubspotDealId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const handlePrint = () => {
@@ -277,7 +283,7 @@ const Onboarding = () => {
             </div>
             <div className="space-y-2">
               <h1 className="text-2xl font-bold">Thank You!</h1>
-              <p className="text-muted-foreground">Your signed terms and fee acceptance has been submitted successfully.</p>
+              <p className="text-muted-foreground">Your signed terms and fee acceptance has been recorded successfully.</p>
             </div>
             <Card className="border-primary/30 bg-primary/5 shadow-sm text-left">
               <CardContent className="pt-5 pb-5">
@@ -290,10 +296,9 @@ const Onboarding = () => {
             <div className="bg-muted rounded-lg p-6 text-left space-y-3">
               <h3 className="font-semibold">What happens next?</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" /> Our team will review your application within 2-3 business days.</li>
-                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" /> You'll receive an email once your account has been activated.</li>
-                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" /> A dedicated account manager will be assigned to assist with setup.</li>
-                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" /> Terminal delivery and installation will be scheduled after activation.</li>
+                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" /> Your submission is now waiting in the TJ admin review queue.</li>
+                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" /> A TJ team member will verify your details before committing to HubSpot.</li>
+                <li className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" /> Once committed, your signed agreement PDF will be attached to the HubSpot deal.</li>
               </ul>
             </div>
             <p className="text-sm text-muted-foreground">

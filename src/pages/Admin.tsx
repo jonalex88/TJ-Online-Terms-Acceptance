@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createSession, DEFAULT_ADMIN_CONFIG, listAllSessions, markSubmitted } from "@/lib/onboarding-store";
-  import { extractDealId, extractCompanyId, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot";
+import { extractDealId, extractCompanyId, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot";
+import { blobToBase64, buildAcceptanceConfirmationSnippet, generateAcceptancePdf, SignerInfo } from "@/lib/generate-pdf";
 import { AdminConfig, OnboardingData } from "@/types/onboarding";
 import {
   Copy, CheckCircle, Link as LinkIcon, ExternalLink, Loader2, AlertCircle, Building2,
@@ -25,6 +26,9 @@ const formatDate = (iso: string) =>
     year: "numeric", month: "short", day: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+
+const isCompletedSession = (session: OnboardingData) =>
+  session.termsAccepted && session.feesAccepted && Boolean(session.signer?.authorizedConfirmed);
 
 // ---------------------------------------------------------------------------
 // Send Tab
@@ -243,11 +247,34 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
   const [submitted, setSubmitted] = useState(session.submittedToHubspot ?? false);
   const [submitError, setSubmitError] = useState("");
 
-  const handleSubmit = async () => {
+  const handleCommit = async () => {
     setSubmitting(true);
     setSubmitError("");
     try {
-      const res = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/submit`, {
+      const companyName =
+        session.companies[0]?.registeredCompanyName ||
+        session.companies[0]?.tradingName ||
+        "Unknown Company";
+      const acceptedAt = session.acceptedAt ?? session.updatedAt;
+      const signerName = session.signer?.fullName ?? "Unknown Signer";
+      const signerTitle = session.signer?.jobTitle ?? "Unknown Title";
+      const signerEmail = session.acceptanceEmail || "unknown@example.com";
+
+      const signer: SignerInfo = {
+        fullName: signerName,
+        jobTitle: signerTitle,
+        companyName,
+        email: signerEmail,
+        acceptedAt,
+        sessionId: session.sessionId,
+        dealId: session.hubspotDealId,
+      };
+
+      const pdfBlob = await generateAcceptancePdf(session, signer);
+      const pdfBase64 = await blobToBase64(pdfBlob);
+      const fileName = `tj-terms-acceptance-${session.hubspotDealId}-${Date.now()}.pdf`;
+
+      const submitRes = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -255,22 +282,58 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
           companies: session.companies,
         }),
       });
-      const body = await res.json().catch(() => ({})) as { error?: string; errors?: string[]; updated?: string[]; created?: string[] };
-      if (!res.ok) {
-        throw new Error(body.error ?? `Server error (${res.status})`);
+
+      const submitBody = await submitRes.json().catch(() => ({})) as { error?: string; errors?: string[]; updated?: string[]; created?: string[] };
+      if (!submitRes.ok) {
+        throw new Error(submitBody.error ?? `Failed to update company/contact details (HTTP ${submitRes.status})`);
       }
-      // Partial success — show any non-fatal errors as a warning but still mark submitted
-      if (body.errors && body.errors.length > 0) {
-        setSubmitError(`Submitted with warnings:\n${body.errors.join("\n")}`);
+
+      const attachRes = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/attach-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pdfBase64,
+          fileName,
+          signerName,
+          signerTitle,
+          signerEmail,
+          acceptedAt,
+        }),
+      });
+
+      const attachBody = await attachRes.json().catch(() => ({})) as { error?: string; warnings?: string[]; fileUrl?: string };
+      if (!attachRes.ok) {
+        throw new Error(attachBody.error ?? `Failed to attach signed PDF (HTTP ${attachRes.status})`);
       }
-      markSubmitted(session.sessionId);
+
+      markSubmitted(session.sessionId, { acceptanceCertificateUrl: attachBody.fileUrl });
       setSubmitted(true);
+
+      const warnings = [...(submitBody.errors ?? []), ...(attachBody.warnings ?? [])];
+      if (warnings.length > 0) {
+        setSubmitError(`Committed with warnings:\n${warnings.join("\n")}`);
+      }
     } catch (err) {
       if (err instanceof Error) setSubmitError(err.message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const primaryCompany = session.companies[0];
+  const previewSigner: SignerInfo = {
+    fullName: session.signer?.fullName ?? "Unknown Signer",
+    jobTitle: session.signer?.jobTitle ?? "Unknown Title",
+    companyName:
+      primaryCompany?.registeredCompanyName ||
+      primaryCompany?.tradingName ||
+      "Unknown Company",
+    email: session.acceptanceEmail || "unknown@example.com",
+    acceptedAt: session.acceptedAt ?? session.updatedAt,
+    sessionId: session.sessionId,
+    dealId: session.hubspotDealId,
+  };
+  const acceptanceSnippet = buildAcceptanceConfirmationSnippet(previewSigner);
 
   const fees = session.adminConfig.fees;
   const totalStores = session.companies.reduce((s, c) => s + c.stores.length, 0);
@@ -287,12 +350,12 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
         <div className="flex items-center gap-3">
           {submitted ? (
             <Badge className="gap-1 bg-success text-success-foreground">
-              <CheckCircle2 className="h-3 w-3" /> Submitted to HubSpot
+              <CheckCircle2 className="h-3 w-3" /> Committed to HubSpot
             </Badge>
           ) : (
-            <Button onClick={handleSubmit} disabled={submitting} className="gap-2">
+            <Button onClick={handleCommit} disabled={submitting} className="gap-2">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Submit to HubSpot
+              commit to hubspot
             </Button>
           )}
         </div>
@@ -326,6 +389,25 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
           {session.feesAccepted && <Badge variant="outline" className="text-success border-success">Fees Accepted</Badge>}
         </div>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Commit Preview</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <p><span className="text-muted-foreground">Trading as:</span> {primaryCompany?.tradingName || "-"}</p>
+            <p><span className="text-muted-foreground">Registered name:</span> {primaryCompany?.registeredCompanyName || "-"}</p>
+            <p><span className="text-muted-foreground">Registration number:</span> {primaryCompany?.registrationNumber || "-"}</p>
+            <p><span className="text-muted-foreground">VAT number:</span> {primaryCompany?.vatNumber || "-"}</p>
+          </div>
+          <Separator />
+          <div className="space-y-2">
+            <p className="font-semibold">Signed Terms Snippet (end of document)</p>
+            <pre className="whitespace-pre-wrap rounded-md border bg-muted/40 p-3 text-xs leading-relaxed">{acceptanceSnippet}</pre>
+          </div>
+        </CardContent>
+      </Card>
 
       {session.companies.map((company) => (
         <Card key={company.id}>
@@ -455,12 +537,12 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
 // ---------------------------------------------------------------------------
 const ReviewTab = () => {
   const [sessions, setSessions] = useState<OnboardingData[]>(() =>
-    listAllSessions().filter((s) => s.currentStep >= 3)
+    listAllSessions().filter(isCompletedSession)
   );
   const [selected, setSelected] = useState<OnboardingData | null>(null);
 
   const refresh = useCallback(() => {
-    setSessions(listAllSessions().filter((s) => s.currentStep >= 3));
+    setSessions(listAllSessions().filter(isCompletedSession));
   }, []);
 
   const handleBack = () => {
@@ -512,7 +594,7 @@ const ReviewTab = () => {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {s.submittedToHubspot
-                  ? <Badge className="bg-success text-success-foreground text-xs">Submitted</Badge>
+                  ? <Badge className="bg-success text-success-foreground text-xs">Committed</Badge>
                   : <Badge variant="outline" className="text-xs">Pending review</Badge>
                 }
                 <span className="text-xs text-muted-foreground hidden sm:block">{formatDate(s.updatedAt)}</span>

@@ -17,6 +17,16 @@ export interface SignerInfo {
   dealId: string;
 }
 
+export function buildAcceptanceConfirmationSnippet(
+  signer: Pick<SignerInfo, "fullName" | "jobTitle" | "companyName" | "email" | "acceptedAt">
+): string {
+  return [
+    `Signed by: ${signer.fullName}, ${signer.jobTitle} - ${signer.companyName}`,
+    `Email: ${signer.email} | Timestamp: ${signer.acceptedAt}`,
+    "This document was generated automatically upon electronic acceptance of TJ terms and fees.",
+  ].join("\n");
+}
+
 function fmtCurrency(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
     style: "currency",
