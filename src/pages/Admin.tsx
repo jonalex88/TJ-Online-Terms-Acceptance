@@ -45,6 +45,11 @@ const SendTab = () => {
 
   const dealId = extractDealId(dealUrl.trim());
   const companyId = companyUrl.trim() ? extractCompanyId(companyUrl.trim()) : null;
+  const detectedDealName = prefetchedData?.store.tradingSiteName?.trim();
+  const detectedCompanyName = (
+    prefetchedData?.company.tradingName ||
+    prefetchedData?.company.registeredCompanyName
+  )?.trim();
 
   const handleGenerate = async () => {
     const trimmedUrl = dealUrl.trim();
@@ -120,7 +125,9 @@ const SendTab = () => {
           <p className="text-xs text-destructive">Please enter a valid HubSpot deal URL containing a deal ID.</p>
         )}
         {dealUrl && dealId && (
-          <p className="text-xs text-muted-foreground">Deal ID detected: <span className="font-mono">{dealId}</span></p>
+          <p className="text-xs text-muted-foreground">
+            {detectedDealName ? `${detectedDealName} detected.` : "Deal URL detected. Click Generate to fetch deal name."}
+          </p>
         )}
       </div>
 
@@ -136,7 +143,11 @@ const SendTab = () => {
           <p className="text-xs text-destructive">Please enter a valid HubSpot company URL containing a company ID.</p>
         )}
         {companyUrl.trim() && companyId && (
-          <p className="text-xs text-muted-foreground">Company ID detected: <span className="font-mono">{companyId}</span> — wizard will include a company details confirmation step.</p>
+          <p className="text-xs text-muted-foreground">
+            {detectedCompanyName
+              ? `${detectedCompanyName} detected - wizard will include a company details confirmation step.`
+              : "Company URL detected. Click Generate to fetch company name and enable company details confirmation step."}
+          </p>
         )}
         {!companyUrl.trim() && (
           <p className="text-xs text-muted-foreground">If provided, the wizard will include a step for the customer to confirm their company details.</p>
