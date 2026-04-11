@@ -308,7 +308,7 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
           contacts: [],
         }));
 
-        const submitRes = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/submit`, {
+        const submitRes = await fetch(`/api/hubspot/submit?dealId=${encodeURIComponent(session.hubspotDealId)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -325,7 +325,7 @@ const ReviewDetail = ({ session, onBack }: { session: OnboardingData; onBack: ()
         submitWarnings.push(...(submitBody.errors ?? []));
       }
 
-      const attachRes = await fetch(`/api/hubspot/deals/${session.hubspotDealId}/attach-pdf`, {
+      const attachRes = await fetch(`/api/hubspot/attach-pdf?dealId=${encodeURIComponent(session.hubspotDealId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

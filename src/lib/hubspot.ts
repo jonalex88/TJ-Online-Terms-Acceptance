@@ -39,7 +39,7 @@ export interface HubSpotCompanyFetchResult {
 }
 
 export async function fetchDealData(dealId: string): Promise<HubSpotFetchResult> {
-  const res = await fetch(`/api/hubspot/deals/${dealId}`);
+  const res = await fetch(`/api/hubspot/deal?dealId=${encodeURIComponent(dealId)}`);
   const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
 
   if (res.ok && !contentType.includes("application/json")) {
@@ -63,7 +63,7 @@ export async function fetchDealData(dealId: string): Promise<HubSpotFetchResult>
 }
 
 export async function fetchCompanyData(companyId: string): Promise<HubSpotCompanyFetchResult> {
-  const res = await fetch(`/api/hubspot/companies/${companyId}`);
+  const res = await fetch(`/api/hubspot/company?companyId=${encodeURIComponent(companyId)}`);
   const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
 
   if (res.ok && !contentType.includes("application/json")) {
