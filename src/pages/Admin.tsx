@@ -12,7 +12,7 @@ import { extractDealId, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot"
 import { AdminConfig, OnboardingData } from "@/types/onboarding";
 import {
   Copy, CheckCircle, Link as LinkIcon, ExternalLink, Loader2, AlertCircle, Building2,
-  ArrowLeft, Send, User, MapPin, FileText, Mail, ClipboardList, CheckCircle2,
+  ArrowLeft, Send, User, MapPin, FileText, Mail, ClipboardList, CheckCircle2, LogOut,
 } from "lucide-react";
 import tjLogo from "@/assets/tj-logo.png";
 
@@ -473,12 +473,27 @@ const ReviewTab = () => {
 // ---------------------------------------------------------------------------
 // Admin root
 // ---------------------------------------------------------------------------
-const Admin = () => {
+interface AdminProps {
+  onSignOut?: () => void;
+  currentUser?: string;
+}
+
+const Admin = ({ onSignOut, currentUser }: AdminProps) => {
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md flex items-center gap-4">
-        <img src={tjLogo} alt="Transaction Junction" className="h-8 brightness-0 invert" />
-        <span className="text-xl font-semibold tracking-tight">TJ Terms of Use Acceptance — Admin</span>
+      <header className="bg-primary text-primary-foreground py-4 px-6 shadow-md flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <img src={tjLogo} alt="Transaction Junction" className="h-8 brightness-0 invert" />
+          <span className="text-xl font-semibold tracking-tight">TJ Terms of Use Acceptance — Admin</span>
+        </div>
+        {onSignOut && (
+          <div className="flex items-center gap-3">
+            {currentUser && <span className="text-sm opacity-90 hidden sm:inline">{currentUser}</span>}
+            <Button variant="secondary" size="sm" onClick={onSignOut}>
+              <LogOut className="mr-2 h-4 w-4" /> Sign out
+            </Button>
+          </div>
+        )}
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-8">
