@@ -62,11 +62,26 @@ const SendTab = () => {
     setLoading(true);
     setError("");
     setPrefetchedData(null);
-    let hubspotData: HubSpotFetchResult | undefined;
-    try {
-      hubspotData = await fetchDealData(id);
+    let hubspotData: HubSpotFetchResult = {
+      store: {},
+      company: {},
+      contacts: [],
+      hubspotCompanyId: "",
+    };
+    const fetchErrors: string[] = [];
 
-      if (companyId) {
+    try {
+      const dealResult = await fetchDealData(id);
+      hubspotData = {
+        ...hubspotData,
+        ...dealResult,
+      };
+    } catch (err) {
+      fetchErrors.push(err instanceof Error ? err.message : "Deal prefill failed");
+    }
+
+    if (companyId) {
+      try {
         const companyResult = await fetchCompanyData(companyId);
         hubspotData = {
           ...hubspotData,
@@ -76,18 +91,16 @@ const SendTab = () => {
           },
           hubspotCompanyId: companyResult.hubspotCompanyId,
         };
+      } catch (err) {
+        fetchErrors.push(err instanceof Error ? err.message : "Company prefill failed");
       }
-
-      setPrefetchedData(hubspotData);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? `Failed to fetch HubSpot data: ${err.message}`
-          : "Failed to fetch HubSpot data. The link will still be generated with an empty form."
-      );
-    } finally {
-      setLoading(false);
     }
+
+    if (fetchErrors.length > 0) {
+      setError(`Failed to fetch HubSpot data: ${fetchErrors.join(" | ")}`);
+    }
+    setPrefetchedData(hubspotData);
+    setLoading(false);
     const updatedConfig: AdminConfig = { ...config, hubspotDealUrl: trimmedUrl, hubspotCompanyUrl: companyUrl.trim() };
     setConfig(updatedConfig);
     const sessionId = createSession(

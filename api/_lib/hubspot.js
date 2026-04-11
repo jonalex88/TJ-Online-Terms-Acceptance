@@ -10,6 +10,7 @@ const COMPANY_PROPS = [
   "trading_as",
   "tradingas",
   "registration_number",
+  "company_registration_no_",
   "company_registration_no",
   "registration_no",
   "company_registration_number",
@@ -141,6 +142,7 @@ function mapCompanyFromHubSpotObject(hsCompany) {
 
   const registrationNumber = firstNonEmpty(
     prop(hsCompany, "registration_number"),
+    prop(hsCompany, "company_registration_no_"),
     prop(hsCompany, "company_registration_no"),
     prop(hsCompany, "registration_no"),
     prop(hsCompany, "company_registration_number"),
