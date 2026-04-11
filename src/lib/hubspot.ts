@@ -33,6 +33,11 @@ export interface HubSpotFetchResult {
   hubspotCompanyId: string;
 }
 
+export interface HubSpotCompanyFetchResult {
+  company: Partial<Company>;
+  hubspotCompanyId: string;
+}
+
 export async function fetchDealData(dealId: string): Promise<HubSpotFetchResult> {
   const res = await fetch(`/api/hubspot/deals/${dealId}`);
   const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
@@ -55,4 +60,28 @@ export async function fetchDealData(dealId: string): Promise<HubSpotFetchResult>
   }
 
   return (await res.json()) as HubSpotFetchResult;
+}
+
+export async function fetchCompanyData(companyId: string): Promise<HubSpotCompanyFetchResult> {
+  const res = await fetch(`/api/hubspot/companies/${companyId}`);
+  const contentType = res.headers.get("content-type")?.toLowerCase() ?? "";
+
+  if (res.ok && !contentType.includes("application/json")) {
+    throw new Error("HubSpot company endpoint returned HTML instead of JSON. Please redeploy so API routing is applied.");
+  }
+
+  if (!res.ok) {
+    let message = `HubSpot proxy error (${res.status})`;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) {
+        message = body.error;
+      }
+    } catch {
+      // Ignore JSON parse failures and fall back to the generic message.
+    }
+    throw new Error(message);
+  }
+
+  return (await res.json()) as HubSpotCompanyFetchResult;
 }

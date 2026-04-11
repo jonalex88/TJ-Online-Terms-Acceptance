@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { createSession, DEFAULT_ADMIN_CONFIG, listAllSessions, markSubmitted } from "@/lib/onboarding-store";
-import { extractDealId, extractCompanyId, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot";
+import { extractDealId, extractCompanyId, fetchCompanyData, fetchDealData, HubSpotFetchResult } from "@/lib/hubspot";
 import { blobToBase64, buildAcceptanceConfirmationSnippet, generateAcceptancePdf, SignerInfo } from "@/lib/generate-pdf";
 import { AdminConfig, OnboardingData } from "@/types/onboarding";
 import {
@@ -60,6 +60,19 @@ const SendTab = () => {
     let hubspotData: HubSpotFetchResult | undefined;
     try {
       hubspotData = await fetchDealData(id);
+
+      if (companyId) {
+        const companyResult = await fetchCompanyData(companyId);
+        hubspotData = {
+          ...hubspotData,
+          company: {
+            ...hubspotData.company,
+            ...companyResult.company,
+          },
+          hubspotCompanyId: companyResult.hubspotCompanyId,
+        };
+      }
+
       setPrefetchedData(hubspotData);
     } catch (err) {
       setError(
@@ -74,7 +87,7 @@ const SendTab = () => {
     setConfig(updatedConfig);
     const sessionId = createSession(
       updatedConfig,
-      { dealId: id, dealUrl: trimmedUrl, companyId: hubspotData?.hubspotCompanyId ?? "" },
+      { dealId: id, dealUrl: trimmedUrl, companyId: companyId ?? hubspotData?.hubspotCompanyId ?? "" },
       hubspotData
     );
     setGeneratedLink(`${window.location.origin}/onboarding/${sessionId}`);
